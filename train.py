@@ -14,11 +14,11 @@ if __name__ == '__main__':
         batch=4,
         device='0',
         workers=0,  # 不使用多线程加载数据，适合小数据集，避免过多内存占用
-        name='yolo11_1440_4_SGD',
+        name='yolo11_1440_4',
 
         patience=20,    # 早停机制，避免过拟合
         augment=True,   # 启用数据增强，提升模型泛化能力
-        optimizer='SGD',
+        optimizer='AdamW', 
         lr0=0.001,      # 小数据集初始学习率降低至0.001，避免训练震荡
         cos_lr=True,   # 启用余弦退火学习率，后期缓慢降低，提升小数据集精度
     )
