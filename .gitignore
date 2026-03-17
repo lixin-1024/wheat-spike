@@ -126,6 +126,7 @@ dmypy.json
 # Project-specific
 data/
 docs/
+runs/
 *.cache
 TODO.md
 

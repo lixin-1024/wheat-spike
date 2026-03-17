@@ -28,7 +28,7 @@ COLOR_SMOOTH = "#D27D2D"   # 平滑曲线
 GRID_COLOR = "#D9D9D9"
 
 # ========= 2) 读取训练结果 =========
-csv_path = Path(r"runs/obb/yolo11_1440_4/results.csv")
+csv_path = Path(r"./runs/obb/yolo11_1440_4/results.csv")
 df = pd.read_csv(csv_path)
 df.columns = [c.strip() for c in df.columns]
 
