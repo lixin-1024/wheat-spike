@@ -79,7 +79,7 @@ class WheatAnalysisPipeline:
             self.visualizer.save(skeleton_vis, str(out / f"{stem}_skeleton.jpg"))
 
             # 保存检测图
-            detect_vis = self.visualizer.draw_detection(image, detection, draw_index=True)
+            detect_vis = self.visualizer.draw_detection(image, detection, draw_index=False)
             self.visualizer.save(detect_vis, str(out / f"{stem}_detection.jpg"))
 
         result = {
@@ -122,11 +122,10 @@ class WheatAnalysisPipeline:
                 csv_rows.append({
                     'image': img_path.name,
                     'spikelet_count': ear['spikelet_count'],
-                    'stem_length': f"{ear['stem_length']:.2f}",
                     'effective_stem_length': f"{ear['effective_stem_length']:.2f}",
                     'mean_length': f"{ear['mean_spikelet_length']:.2f}",
                     'mean_width': f"{ear['mean_spikelet_width']:.2f}",
-                    'mean_area': f"{ear['mean_spikelet_area']:.2f}",
+                    'mean_aspect_ratio': f"{ear['mean_aspect_ratio']:.2f}",
                     'ECI': f"{ear['ECI']:.6f}",
                     'SDU': f"{ear['SDU']:.6f}",
                     'SCO': f"{ear['SCO']:.6f}",

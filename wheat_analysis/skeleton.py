@@ -84,12 +84,15 @@ class SkeletonBuilder:
         smoothing = self.spline_smoothing
         if smoothing is None:
             # 自动平滑：允许一定偏差
-            smoothing = N * (total_length * 0.02) ** 2
+            smoothing = N * (total_length * 0.03) ** 2 # ✅ 修复：增大平滑系数，让曲线更“远离”原始点
 
-        # ✅ 修复：给首尾点更低权重
+        # 给首尾部分节点渐进降权，减少端部偏差
         weights = np.ones(N)
-        weights[0] = 0.45  # 首点权重降低
-        weights[-1] = 0.45  # 尾点权重降低
+        n_edge = max(2, N // 5)  # 首尾各约20%的节点降权
+        for ei in range(n_edge):
+            w = 0.3 + 0.7 * (ei / n_edge)
+            weights[ei] = min(weights[ei], w)
+            weights[-(ei + 1)] = min(weights[-(ei + 1)], w)
 
         spline_x = UnivariateSpline(t, sorted_centers[:, 0], k=k, s=smoothing, w=weights)
         spline_y = UnivariateSpline(t, sorted_centers[:, 1], k=k, s=smoothing, w=weights)
@@ -100,23 +103,41 @@ class SkeletonBuilder:
         stem_y = spline_y(t_fine)
         stem_points = np.column_stack([stem_x, stem_y])
 
-        # ========== 5. 计算每个小穗的骨架投影与弧长 ==========
+        # ========== 5. 计算OBB上下中点并投影到主茎 ==========
+        xyxyxyxy = detection['xyxyxyxy']  # (N, 4, 2)
         spikelet_proj = np.zeros((N, 2))
         spikelet_s = np.zeros(N)
         spikelet_dist = np.zeros(N)
         spikelet_side = np.zeros(N)
+        spikelet_near_mid = np.zeros((N, 2))
+        spikelet_far_mid = np.zeros((N, 2))
 
         for i in range(N):
-            cx, cy = centers[i]
+            # 计算OBB上下中点
+            corners = xyxyxyxy[i]  # (4, 2)
+            sorted_by_y = corners[np.argsort(corners[:, 1])]
+            top_mid = sorted_by_y[:2].mean(axis=0)      # 最上面两个点的中点
+            bottom_mid = sorted_by_y[2:].mean(axis=0)    # 最下面两个点的中点
 
-            # 找到距离最近的骨架点作为初始估计
-            dists = np.sqrt((stem_x - cx) ** 2 + (stem_y - cy) ** 2)
+            # 判断哪个中点离主茎更近
+            d_top = np.min((stem_x - top_mid[0]) ** 2 + (stem_y - top_mid[1]) ** 2)
+            d_bottom = np.min((stem_x - bottom_mid[0]) ** 2 + (stem_y - bottom_mid[1]) ** 2)
+            if d_top < d_bottom:
+                near_mid, far_mid = top_mid, bottom_mid
+            else:
+                near_mid, far_mid = bottom_mid, top_mid
+
+            spikelet_near_mid[i] = near_mid
+            spikelet_far_mid[i] = far_mid
+
+            # 使用 near_mid 投影到主茎
+            nmx, nmy = near_mid
+            dists = np.sqrt((stem_x - nmx) ** 2 + (stem_y - nmy) ** 2)
             idx_min = np.argmin(dists)
             t_init = t_fine[idx_min]
 
-            # 精确优化
             def dist_func(tt):
-                return (spline_x(tt) - cx) ** 2 + (spline_y(tt) - cy) ** 2
+                return (spline_x(tt) - nmx) ** 2 + (spline_y(tt) - nmy) ** 2
 
             result = minimize_scalar(
                 dist_func,
@@ -128,14 +149,13 @@ class SkeletonBuilder:
             px, py = float(spline_x(t_opt)), float(spline_y(t_opt))
             spikelet_proj[i] = [px, py]
             spikelet_s[i] = t_opt
-            spikelet_dist[i] = np.sqrt((cx - px) ** 2 + (cy - py) ** 2)
+            spikelet_dist[i] = np.sqrt((nmx - px) ** 2 + (nmy - py) ** 2)
 
             # 判断左右侧：使用叉积
-            # 主茎切线方向
             dt = 0.001
             tx = float(spline_x(min(t_opt + dt, 1))) - float(spline_x(max(t_opt - dt, 0)))
             ty = float(spline_y(min(t_opt + dt, 1))) - float(spline_y(max(t_opt - dt, 0)))
-            cross = tx * (cy - py) - ty * (cx - px)
+            cross = tx * (nmy - py) - ty * (nmx - px)
             spikelet_side[i] = 1.0 if cross >= 0 else -1.0
 
         # 按弧长排序的序号
@@ -155,6 +175,8 @@ class SkeletonBuilder:
             'spikelet_side': spikelet_side,
             'spikelet_order': spikelet_order,
             'spikelet_dist_to_stem': spikelet_dist,
+            'spikelet_near_mid': spikelet_near_mid,
+            'spikelet_far_mid': spikelet_far_mid,
             'stem_length': actual_stem_length,
             'stem_direction': main_dir,
             'spline_x': spline_x,

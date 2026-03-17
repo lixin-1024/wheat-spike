@@ -279,11 +279,10 @@ class WheatAnalysisApp(QMainWindow):
         self.phenotype_text.append("===== 穗级表型参数 =====")
         ear_pheno = result['ear_pheno']
         self.phenotype_text.append(f"小穗数量: {ear_pheno['spikelet_count']}")
-        self.phenotype_text.append(f"主茎长度: {ear_pheno['stem_length']:.2f} px")
-        self.phenotype_text.append(f"有效穗段长度: {ear_pheno['effective_stem_length']:.2f} px")
+        self.phenotype_text.append(f"主茎有效穗段长度: {ear_pheno['effective_stem_length']:.2f} px")
         self.phenotype_text.append(f"平均小穗长度: {ear_pheno['mean_spikelet_length']:.2f} px")
         self.phenotype_text.append(f"平均小穗宽度: {ear_pheno['mean_spikelet_width']:.2f} px")
-        self.phenotype_text.append(f"平均小穗面积: {ear_pheno['mean_spikelet_area']:.2f} px²")
+        self.phenotype_text.append(f"平均长宽比: {ear_pheno['mean_aspect_ratio']:.2f}")
         self.phenotype_text.append(f"穗型紧密度指数(ECI): {ear_pheno['ECI']:.6f}")
         self.phenotype_text.append(f"小穗分布均匀度(SDU): {ear_pheno['SDU']:.6f}")
         self.phenotype_text.append(f"穗型重心偏移度(SCO): {ear_pheno['SCO']:.6f}")
@@ -301,8 +300,7 @@ class WheatAnalysisApp(QMainWindow):
             self.phenotype_text.append(
                 f"小穗[{i}]: 长={spikelet_pheno['lengths'][i]:.1f}px, "
                 f"宽={spikelet_pheno['widths'][i]:.1f}px, "
-                f"长宽比={spikelet_pheno['aspect_ratios'][i]:.2f}, "
-                f"面积={spikelet_pheno['areas'][i]:.0f}px²"
+                f"长宽比={spikelet_pheno['aspect_ratios'][i]:.2f}"
             )
 
         # 穗型向量

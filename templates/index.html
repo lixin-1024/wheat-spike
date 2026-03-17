@@ -445,11 +445,7 @@
                             <td>${earPheno.spikelet_count}</td>
                         </tr>
                         <tr>
-                            <td>主茎长度</td>
-                            <td>${earPheno.stem_length.toFixed(2)} px</td>
-                        </tr>
-                        <tr>
-                            <td>有效穗段长度</td>
+                            <td>主茎有效穗段长度</td>
                             <td>${earPheno.effective_stem_length.toFixed(2)} px</td>
                         </tr>
                         <tr>
@@ -461,8 +457,8 @@
                             <td>${earPheno.mean_spikelet_width.toFixed(2)} px</td>
                         </tr>
                         <tr>
-                            <td>平均小穗面积</td>
-                            <td>${earPheno.mean_spikelet_area.toFixed(2)} px²</td>
+                            <td>平均长宽比</td>
+                            <td>${earPheno.mean_aspect_ratio.toFixed(2)}</td>
                         </tr>
                         <tr>
                             <td>穗型紧密度指数(ECI)</td>
@@ -512,8 +508,7 @@
                                     <td>
                                         长=${spikeletPheno.lengths[i].toFixed(1)}px,
                                         宽=${spikeletPheno.widths[i].toFixed(1)}px,
-                                        长宽比=${spikeletPheno.aspect_ratios[i].toFixed(2)},
-                                        面积=${spikeletPheno.areas[i].toFixed(0)}px²
+                                        长宽比=${spikeletPheno.aspect_ratios[i].toFixed(2)}
                                     </td>
                                 </tr>
                             `;

@@ -53,7 +53,7 @@ def serialize_result(result, stem_name):
         image = cv2.imread(result['detection']['image_path'])
         skeleton_vis = vis.draw_skeleton(image, result['detection'], result['skeleton'])
         cv2.imwrite(str(out_dir / f"{stem_name}_skeleton.jpg"), skeleton_vis)
-        detect_vis = vis.draw_detection(image, result['detection'], draw_index=True)
+        detect_vis = vis.draw_detection(image, result['detection'], draw_index=False)
         cv2.imwrite(str(out_dir / f"{stem_name}_detection.jpg"), detect_vis)
 
     # 构造 JSON 安全的响应

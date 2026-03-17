@@ -49,10 +49,9 @@ class PhenotypeExtractor:
         Returns:
             dict: {
                 'spikelet_count': int,                 # 小穗数
-                'stem_length': float,                  # 主茎有效穗段长度(像素)
                 'mean_spikelet_length': float,         # 平均小穗长度
                 'mean_spikelet_width': float,          # 平均小穗宽度
-                'mean_spikelet_area': float,           # 平均小穗面积
+                'mean_aspect_ratio': float,            # 平均长宽比
                 'ECI': float,                          # 穗型紧密度指数
                 'SDU': float,                          # 小穗分布均匀度
                 'SCO': float,                          # 穗型重心偏移度
@@ -110,11 +109,10 @@ class PhenotypeExtractor:
 
         return {
             'spikelet_count': N,
-            'stem_length': stem_length,
             'effective_stem_length': effective_length,
             'mean_spikelet_length': detection['heights'].mean(),
             'mean_spikelet_width': detection['widths'].mean(),
-            'mean_spikelet_area': (detection['heights'] * detection['widths']).mean(),
+            'mean_aspect_ratio': (detection['heights'] / np.maximum(detection['widths'], 1e-6)).mean(),
             'ECI': ECI,
             'SDU': SDU,
             'SCO': SCO,

@@ -56,19 +56,32 @@ class Visualizer:
             cv2.line(vis, tuple(stem_pts[j]), tuple(stem_pts[j + 1]),
                      self.COLOR_STEM, 3)
 
-        # 2. 绘制连接线（小穗中心到主茎投影点）
-        centers = detection['centers']
+        # 2. 绘制连接线（经过OBB上下中点连接到主茎）
         projs = skeleton['spikelet_proj']
         sides = skeleton['spikelet_side']
+        near_mids = skeleton['spikelet_near_mid']
+        far_mids = skeleton['spikelet_far_mid']
 
-        for i in range(len(centers)):
-            cx, cy = int(centers[i, 0]), int(centers[i, 1])
+        # 构建排序标签: original_index → rank (1-based)
+        spikelet_order = skeleton['spikelet_order']
+        order_labels = np.empty_like(spikelet_order)
+        order_labels[spikelet_order] = np.arange(len(spikelet_order))
+
+        for i in range(len(projs)):
             px, py = int(projs[i, 0]), int(projs[i, 1])
+            nx, ny = int(near_mids[i, 0]), int(near_mids[i, 1])
+            fx, fy = int(far_mids[i, 0]), int(far_mids[i, 1])
 
             color = self.COLOR_LEFT if sides[i] < 0 else self.COLOR_RIGHT
-            cv2.line(vis, (px, py), (cx, cy), color, 2)
+            cv2.line(vis, (px, py), (nx, ny), color, 2)
+            cv2.line(vis, (nx, ny), (fx, fy), color, 2)
             cv2.circle(vis, (px, py), 4, self.COLOR_PROJ, -1)
-            cv2.circle(vis, (cx, cy), 4, self.COLOR_CENTER, -1)
+            cv2.circle(vis, (nx, ny), 4, self.COLOR_CENTER, -1)
+            cv2.circle(vis, (fx, fy), 4, self.COLOR_CENTER, -1)
+
+            # 标注投影排序序号
+            cv2.putText(vis, str(order_labels[i] + 1), (fx + 8, fy - 8),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.COLOR_TEXT, 2)
 
         return vis
 
@@ -91,24 +104,33 @@ class Visualizer:
                      self.COLOR_STEM, 3)
 
         # 3. 绘制连接线和标注
-        centers = detection['centers']
         projs = skeleton['spikelet_proj']
         sides = skeleton['spikelet_side']
+        near_mids = skeleton['spikelet_near_mid']
+        far_mids = skeleton['spikelet_far_mid']
         lengths = spikelet_pheno['lengths']
         widths = spikelet_pheno['widths']
 
-        for i in range(len(centers)):
-            cx, cy = int(centers[i, 0]), int(centers[i, 1])
+        # 构建排序标签
+        spikelet_order = skeleton['spikelet_order']
+        order_labels = np.empty_like(spikelet_order)
+        order_labels[spikelet_order] = np.arange(len(spikelet_order))
+
+        for i in range(len(projs)):
             px, py = int(projs[i, 0]), int(projs[i, 1])
+            nx, ny = int(near_mids[i, 0]), int(near_mids[i, 1])
+            fx, fy = int(far_mids[i, 0]), int(far_mids[i, 1])
 
             color = self.COLOR_LEFT if sides[i] < 0 else self.COLOR_RIGHT
-            cv2.line(vis, (px, py), (cx, cy), color, 2)
+            cv2.line(vis, (px, py), (nx, ny), color, 2)
+            cv2.line(vis, (nx, ny), (fx, fy), color, 2)
             cv2.circle(vis, (px, py), 4, self.COLOR_PROJ, -1)
-            cv2.circle(vis, (cx, cy), 4, self.COLOR_CENTER, -1)
+            cv2.circle(vis, (nx, ny), 4, self.COLOR_CENTER, -1)
+            cv2.circle(vis, (fx, fy), 4, self.COLOR_CENTER, -1)
 
-            # 标注尺寸
-            label = f"L:{lengths[i]:.0f} W:{widths[i]:.0f}"
-            cv2.putText(vis, label, (cx + 10, cy + 5),
+            # 标注尺寸和排序序号
+            label = f"{order_labels[i] + 1}: L:{lengths[i]:.0f} W:{widths[i]:.0f}"
+            cv2.putText(vis, label, (fx + 10, fy + 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, self.COLOR_TEXT, 1)
 
         # 4. 在图像左上角绘制穗级表型摘要
@@ -120,8 +142,7 @@ class Visualizer:
         """在图像上绘制穗级表型摘要信息框"""
         lines = [
             f"Spikelets: {ear_pheno['spikelet_count']}",
-            f"Stem Length: {ear_pheno['stem_length']:.1f} px",
-            f"Eff. Length: {ear_pheno['effective_stem_length']:.1f} px",
+            f"Eff. Stem Length: {ear_pheno['effective_stem_length']:.1f} px",
             f"ECI: {ear_pheno['ECI']:.4f}",
             f"SDU: {ear_pheno['SDU']:.4f}",
             f"SCO: {ear_pheno['SCO']:.4f}",
