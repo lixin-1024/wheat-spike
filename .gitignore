@@ -121,13 +121,13 @@ dmypy.json
 # IDE
 .vscode/
 .idea/
+.claude/
 
 # Project-specific
 data/
 docs/
-*.pt
-!runs/**/*.pt
 *.cache
+TODO.md
 
 # Uploads
 uploads/
