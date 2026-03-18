@@ -4,6 +4,7 @@
 """
 import numpy as np
 from scipy.interpolate import UnivariateSpline
+from scipy.optimize import minimize_scalar
 
 
 class SkeletonBuilder:
@@ -24,14 +25,14 @@ class SkeletonBuilder:
         1. 用小穗长轴最低点做 PCA，确定主茎方向
         2. 将长轴最低点投影到主方向，按投影排序
         3. 用样条曲线拟合主茎骨架线
-        4. 提取每个小穗长轴（最高点-最低点）
-        5. 计算小穗到主茎的最近点及弧长位置
+        4. 计算每个小穗引线与主茎曲线的交点
         5. 归一化弧长参数 s∈[0,1]
 
         Returns:
             dict: {
                 'stem_points': np.ndarray (M, 2),       # 主茎骨架采样点
                 'stem_parameter': np.ndarray (M,),       # 对应的归一化弧长参数
+                'spikelet_intersections': np.ndarray (N, 2),  # 引线与主茎曲线交点
                 'spikelet_anchor_points': np.ndarray (N, 2),  # 引线起点(长轴最高端点)
                 'spikelet_s': np.ndarray (N,),           # 小穗归一化弧长(裁剪到[0,1])
                 'spikelet_t_raw': np.ndarray (N,),       # 小穗在主茎上的原始参数
@@ -147,7 +148,8 @@ class SkeletonBuilder:
         stem_y = spline_y(t_fine)
         stem_points = np.column_stack([stem_x, stem_y])
 
-        # ========== 5. 基于小穗长轴与主茎最近点，构建骨架关联 ==========
+        # ========== 5. 基于 OBB 中心点与方向角，求引线与主茎交点 ==========
+        spikelet_intersections = np.zeros((N, 2))
         spikelet_anchor_points = np.zeros((N, 2))
         spikelet_t_raw = np.zeros(N)
         spikelet_s = np.zeros(N)
@@ -170,13 +172,30 @@ class SkeletonBuilder:
             sx, sy = float(highest_points[i, 0]), float(highest_points[i, 1])
             spikelet_anchor_points[i] = [sx, sy]
 
-            # 采用“主茎最近点”而非“引线交点”。
-            fit_x, fit_y = stem_fit_points[i]
-            d2 = (stem_x - fit_x) ** 2 + (stem_y - fit_y) ** 2
-            idx_min = int(np.argmin(d2))
-            t_opt = float(t_fine[idx_min])
-            px, py = float(stem_x[idx_min]), float(stem_y[idx_min])
+            # 初值选择：取“离引线垂距最小”的主茎采样点。
+            vx = stem_x - sx
+            vy = stem_y - sy
+            perp = np.abs(vx * dy - vy * dx)
+            idx_min = int(np.argmin(perp))
 
+            t_init = t_fine[idx_min]
+
+            def line_intersection_obj(tt):
+                vx = float(spline_x(tt)) - sx
+                vy = float(spline_y(tt)) - sy
+                cross = vx * dy - vy * dx
+                return cross * cross
+
+            result = minimize_scalar(
+                line_intersection_obj,
+                bounds=(max(t_start, t_init - 0.08), min(t_end, t_init + 0.08)),
+                method='bounded'
+            )
+            t_opt = result.x
+
+            px, py = float(spline_x(t_opt)), float(spline_y(t_opt))
+
+            spikelet_intersections[i] = [px, py]
             spikelet_t_raw[i] = t_opt
             spikelet_dist[i] = np.hypot(cx - px, cy - py)
 
@@ -201,6 +220,7 @@ class SkeletonBuilder:
         return {
             'stem_points': stem_points,
             'stem_parameter': t_fine,
+            'spikelet_intersections': spikelet_intersections,
             'spikelet_anchor_points': spikelet_anchor_points,
             'spikelet_s': spikelet_s,
             'spikelet_t_raw': spikelet_t_raw,

@@ -12,9 +12,8 @@ class Visualizer:
     # 配色方案
     COLOR_STEM = (0, 200, 0)           # 主茎线：绿色
     COLOR_OBB = (0, 255, 255)          # OBB框：青色
-    COLOR_CONNECT = (255, 165, 0)      # 连接线：橙色
+    COLOR_AXIS = (255, 165, 0)         # 小穗长轴：橙色
     COLOR_CENTER = (0, 0, 255)         # 中心点：红色
-    COLOR_INTERSECTION = (255, 0, 255) # 交点：紫色
     COLOR_TEXT = (255, 255, 255)       # 文字：白色
     COLOR_LEFT = (255, 100, 100)       # 左侧小穗
     COLOR_RIGHT = (100, 100, 255)      # 右侧小穗
@@ -56,9 +55,9 @@ class Visualizer:
             cv2.line(vis, tuple(stem_pts[j]), tuple(stem_pts[j + 1]),
                      self.COLOR_STEM, 3)
 
-        # 2. 绘制连接线（中心点引线与主茎交点）
-        intersections = skeleton['spikelet_intersections']
-        anchors = skeleton.get('spikelet_anchor_points', skeleton['spikelet_centers'])
+        # 2. 绘制小穗长轴（最高点-最低点）
+        tops = skeleton.get('spikelet_anchor_points', skeleton['spikelet_centers'])
+        bottoms = skeleton.get('stem_fit_points', skeleton['spikelet_centers'])
         sides = skeleton['spikelet_side']
         centers = skeleton['spikelet_centers']
 
@@ -67,15 +66,15 @@ class Visualizer:
         order_labels = np.empty_like(spikelet_order)
         order_labels[spikelet_order] = np.arange(len(spikelet_order))
 
-        for i in range(len(intersections)):
-            px, py = int(intersections[i, 0]), int(intersections[i, 1])
-            sx, sy = int(anchors[i, 0]), int(anchors[i, 1])
+        for i in range(len(tops)):
+            tx, ty = int(tops[i, 0]), int(tops[i, 1])
+            bx, by = int(bottoms[i, 0]), int(bottoms[i, 1])
             cx, cy = int(centers[i, 0]), int(centers[i, 1])
 
             color = self.COLOR_LEFT if sides[i] < 0 else self.COLOR_RIGHT
-            cv2.line(vis, (px, py), (sx, sy), color, 2)
-            cv2.circle(vis, (px, py), 4, self.COLOR_INTERSECTION, -1)
-            cv2.circle(vis, (sx, sy), 3, color, -1)
+            cv2.line(vis, (tx, ty), (bx, by), color, 2)
+            cv2.circle(vis, (tx, ty), 3, color, -1)
+            cv2.circle(vis, (bx, by), 3, color, -1)
             cv2.circle(vis, (cx, cy), 4, self.COLOR_CENTER, -1)
 
             # 标注沿主茎排序序号
@@ -102,9 +101,9 @@ class Visualizer:
             cv2.line(vis, tuple(stem_pts[j]), tuple(stem_pts[j + 1]),
                      self.COLOR_STEM, 3)
 
-        # 3. 绘制连接线和标注
-        intersections = skeleton['spikelet_intersections']
-        anchors = skeleton.get('spikelet_anchor_points', skeleton['spikelet_centers'])
+        # 3. 绘制小穗长轴和标注
+        tops = skeleton.get('spikelet_anchor_points', skeleton['spikelet_centers'])
+        bottoms = skeleton.get('stem_fit_points', skeleton['spikelet_centers'])
         sides = skeleton['spikelet_side']
         centers = skeleton['spikelet_centers']
         lengths = spikelet_pheno['lengths']
@@ -115,15 +114,15 @@ class Visualizer:
         order_labels = np.empty_like(spikelet_order)
         order_labels[spikelet_order] = np.arange(len(spikelet_order))
 
-        for i in range(len(intersections)):
-            px, py = int(intersections[i, 0]), int(intersections[i, 1])
-            sx, sy = int(anchors[i, 0]), int(anchors[i, 1])
+        for i in range(len(tops)):
+            tx, ty = int(tops[i, 0]), int(tops[i, 1])
+            bx, by = int(bottoms[i, 0]), int(bottoms[i, 1])
             cx, cy = int(centers[i, 0]), int(centers[i, 1])
 
             color = self.COLOR_LEFT if sides[i] < 0 else self.COLOR_RIGHT
-            cv2.line(vis, (px, py), (sx, sy), color, 2)
-            cv2.circle(vis, (px, py), 4, self.COLOR_INTERSECTION, -1)
-            cv2.circle(vis, (sx, sy), 3, color, -1)
+            cv2.line(vis, (tx, ty), (bx, by), color, 2)
+            cv2.circle(vis, (tx, ty), 3, color, -1)
+            cv2.circle(vis, (bx, by), 3, color, -1)
             cv2.circle(vis, (cx, cy), 4, self.COLOR_CENTER, -1)
 
             # 标注尺寸和排序序号
