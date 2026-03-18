@@ -35,8 +35,7 @@ if __name__ == '__main__':
         for i in range(min(5, result['detection']['count'])):
             print(f"  小穗[{i}]: 长={spk['lengths'][i]:.1f}px, "
                   f"宽={spk['widths'][i]:.1f}px, "
-                  f"长宽比={spk['aspect_ratios'][i]:.2f}, "
-                  f"面积={spk['areas'][i]:.0f}px²")
+                  f"长宽比={spk['aspect_ratios'][i]:.2f}")
 
         print(f"\n===== 穗型向量 (维度: {len(result['ear_vector'])}) =====")
         print(f"  {result['ear_vector']}")

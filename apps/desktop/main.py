@@ -39,8 +39,9 @@ class WheatAnalysisApp(QMainWindow):
         self.setGeometry(100, 100, 1200, 800)
 
         # 初始化分析管线
+        PROJECT_ROOT = Path(__file__).parent.parent.parent
         self.pipeline = WheatAnalysisPipeline(
-            model_path='runs/obb/yolo11_1440_4/weights/best.pt',
+            model_path=str(PROJECT_ROOT / 'runs/obb/yolo11_1440_4/weights/best.pt'),
             imgsz=1440,
             conf=0.5
         )
@@ -279,10 +280,10 @@ class WheatAnalysisApp(QMainWindow):
         self.phenotype_text.append("===== 穗级表型参数 =====")
         ear_pheno = result['ear_pheno']
         self.phenotype_text.append(f"小穗数量: {ear_pheno['spikelet_count']}")
-        self.phenotype_text.append(f"主茎有效穗段长度: {ear_pheno['effective_stem_length']:.2f} px")
+        self.phenotype_text.append(f"主茎弧长: {ear_pheno['stem_length']:.2f} px")
         self.phenotype_text.append(f"平均小穗长度: {ear_pheno['mean_spikelet_length']:.2f} px")
         self.phenotype_text.append(f"平均小穗宽度: {ear_pheno['mean_spikelet_width']:.2f} px")
-        self.phenotype_text.append(f"平均长宽比: {ear_pheno['mean_aspect_ratio']:.2f}")
+        self.phenotype_text.append(f"平均小穗长宽比: {ear_pheno['mean_aspect_ratio']:.2f}")
         self.phenotype_text.append(f"穗型紧密度指数(ECI): {ear_pheno['ECI']:.6f}")
         self.phenotype_text.append(f"小穗分布均匀度(SDU): {ear_pheno['SDU']:.6f}")
         self.phenotype_text.append(f"穗型重心偏移度(SCO): {ear_pheno['SCO']:.6f}")
@@ -335,11 +336,9 @@ class WheatAnalysisApp(QMainWindow):
                     writer.writerow(['穗级表型参数'])
                     writer.writerow(['参数', '值'])
                     writer.writerow(['小穗数量', ear_pheno['spikelet_count']])
-                    writer.writerow(['主茎长度', f"{ear_pheno['stem_length']:.2f}"])
-                    writer.writerow(['有效穗段长度', f"{ear_pheno['effective_stem_length']:.2f}"])
+                    writer.writerow(['主茎弧长', f"{ear_pheno['stem_length']:.2f}"])
                     writer.writerow(['平均小穗长度', f"{ear_pheno['mean_spikelet_length']:.2f}"])
                     writer.writerow(['平均小穗宽度', f"{ear_pheno['mean_spikelet_width']:.2f}"])
-                    writer.writerow(['平均小穗面积', f"{ear_pheno['mean_spikelet_area']:.2f}"])
                     writer.writerow(['穗型紧密度指数(ECI)', f"{ear_pheno['ECI']:.6f}"])
                     writer.writerow(['小穗分布均匀度(SDU)', f"{ear_pheno['SDU']:.6f}"])
                     writer.writerow(['穗型重心偏移度(SCO)', f"{ear_pheno['SCO']:.6f}"])
@@ -351,15 +350,14 @@ class WheatAnalysisApp(QMainWindow):
                     # 写入小穗级参数
                     writer.writerow([])
                     writer.writerow(['小穗级表型参数'])
-                    writer.writerow(['小穗序号', '长度(px)', '宽度(px)', '长宽比', '面积(px²)'])
+                    writer.writerow(['小穗序号', '长度(px)', '宽度(px)', '长宽比'])
 
                     for i in range(min(10, len(spikelet_pheno['lengths']))):
                         writer.writerow([
                             i,
                             f"{spikelet_pheno['lengths'][i]:.1f}",
                             f"{spikelet_pheno['widths'][i]:.1f}",
-                            f"{spikelet_pheno['aspect_ratios'][i]:.2f}",
-                            f"{spikelet_pheno['areas'][i]:.0f}"
+                            f"{spikelet_pheno['aspect_ratios'][i]:.2f}"
                         ])
 
             self.status_label.setText(f"结果已保存到: {file_path}")

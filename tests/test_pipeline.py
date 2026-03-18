@@ -41,7 +41,7 @@ class TestWheatAnalysisPipeline(unittest.TestCase):
         # 检查骨架
         skeleton = result['skeleton']
         self.assertIn('stem_points', skeleton)
-        self.assertIn('spikelet_proj', skeleton)
+        self.assertIn('spikelet_intersections', skeleton)
 
         # 检查表型参数
         ear_pheno = result['ear_pheno']
@@ -98,13 +98,20 @@ class TestSkeletonBuilder(unittest.TestCase):
                 [150, 150],
                 [200, 200],
                 [250, 250]
-            ])
+            ]),
+            'angles': np.array([0.1, 0.2, 0.15, 0.12]),
+            'xywhr': np.array([
+                [100, 100, 20, 50, 0.1],
+                [150, 150, 18, 48, 0.2],
+                [200, 200, 19, 52, 0.15],
+                [250, 250, 21, 51, 0.12],
+            ]),
         }
 
         skeleton = self.skeleton_builder.build(detection)
 
         self.assertIn('stem_points', skeleton)
-        self.assertIn('spikelet_proj', skeleton)
+        self.assertIn('spikelet_intersections', skeleton)
         self.assertIn('spikelet_s', skeleton)
         self.assertIn('stem_length', skeleton)
 
@@ -128,7 +135,6 @@ class TestPhenotypeExtractor(unittest.TestCase):
         self.assertIn('lengths', pheno)
         self.assertIn('widths', pheno)
         self.assertIn('aspect_ratios', pheno)
-        self.assertIn('areas', pheno)
         self.assertIn('angles_deg', pheno)
 
     def test_extract_ear_phenotypes(self):
@@ -149,7 +155,8 @@ class TestPhenotypeExtractor(unittest.TestCase):
         skeleton = {
             'spikelet_s': np.array([0.1, 0.3, 0.5, 0.7, 0.9]),
             'spikelet_dist': np.array([10, 15, 12, 18, 14]),
-            'spikelet_side': np.array([1, -1, 1, -1, 1])
+            'spikelet_side': np.array([1, -1, 1, -1, 1]),
+            'stem_length': 200.0,
         }
 
         pheno = self.extractor.extract_ear_phenotypes(detection, skeleton)

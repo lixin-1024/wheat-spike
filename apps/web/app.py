@@ -8,22 +8,24 @@ from werkzeug.utils import secure_filename
 
 from wheat_analysis.pipeline import WheatAnalysisPipeline
 
+# 获取项目根目录
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+UPLOAD_FOLDER = PROJECT_ROOT / 'uploads'
+RESULT_FOLDER = PROJECT_ROOT / 'results'
+
 # 配置
 app = Flask(__name__)
 CORS(app)  # 启用CORS支持
-app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB最大文件大小
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'bmp'}
 
 # 初始化分析管线
 pipeline = WheatAnalysisPipeline(
-    model_path='../../runs/obb/yolo11_1440_4/weights/best.pt',
+    model_path=str(PROJECT_ROOT / 'runs/obb/yolo11_1440_4/weights/best.pt'),
     imgsz=1440,
     conf=0.5
 )
-
-
-RESULT_FOLDER = 'results/web'
 
 
 def allowed_file(filename):

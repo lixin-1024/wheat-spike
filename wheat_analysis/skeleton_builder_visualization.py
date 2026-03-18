@@ -23,19 +23,19 @@ class SkeletonBuilder:
         1. PCA 确定主茎方向
         2. 将小穗中心投影到主方向，按投影排序
         3. 用样条曲线拟合主茎骨架线
-        4. 计算每个小穗在主茎上的投影点（足点）
+        4. 计算每个小穗到主茎的交点
         5. 归一化弧长参数 s∈[0,1]
 
         Returns:
             dict: {
                 'stem_points': np.ndarray (M, 2),       # 主茎骨架采样点
                 'stem_parameter': np.ndarray (M,),       # 对应的归一化弧长参数
-                'spikelet_proj': np.ndarray (N, 2),      # 小穗在主茎上的投影足点
+                'spikelet_intersections': np.ndarray (N, 2),  # 小穗到主茎交点
                 'spikelet_s': np.ndarray (N,),           # 小穗的归一化弧长位置 s∈[0,1]
                 'spikelet_dist': np.ndarray (N,),        # 小穗中心到主茎的距离
                 'spikelet_side': np.ndarray (N,),        # 小穗在主茎左(-1)或右(+1)侧
                 'spikelet_order': np.ndarray (N,),       # 小穗沿主茎的排列序号
-                'stem_length': float,                     # 主茎有效长度(像素)
+                'stem_length': float,                     # 主茎弧长(像素)
                 'stem_direction': np.ndarray (2,),        # 主茎主方向(单位向量)
                 'spline_x': UnivariateSpline,            # 主茎x样条函数
                 'spline_y': UnivariateSpline,            # 主茎y样条函数
@@ -98,8 +98,8 @@ class SkeletonBuilder:
         stem_y = spline_y(t_fine)
         stem_points = np.column_stack([stem_x, stem_y])
 
-        # ========== 5. 计算每个小穗的骨架投影与弧长 ==========
-        spikelet_proj = np.zeros((N, 2))
+        # ========== 5. 计算每个小穗到主茎的交点与弧长 ==========
+        spikelet_intersections = np.zeros((N, 2))
         spikelet_s = np.zeros(N)
         spikelet_dist = np.zeros(N)
         spikelet_side = np.zeros(N)
@@ -124,7 +124,7 @@ class SkeletonBuilder:
             t_opt = result.x
 
             px, py = float(spline_x(t_opt)), float(spline_y(t_opt))
-            spikelet_proj[i] = [px, py]
+            spikelet_intersections[i] = [px, py]
             spikelet_s[i] = t_opt
             spikelet_dist[i] = np.sqrt((cx - px) ** 2 + (cy - py) ** 2)
 
@@ -147,7 +147,7 @@ class SkeletonBuilder:
         return {
             'stem_points': stem_points,
             'stem_parameter': t_fine,
-            'spikelet_proj': spikelet_proj,
+            'spikelet_intersections': spikelet_intersections,
             'spikelet_s': spikelet_s,
             'spikelet_dist': spikelet_dist,
             'spikelet_side': spikelet_side,
@@ -173,7 +173,7 @@ def test_skeleton_builder_visualization():
     1. 原始小穗点 + PCA主方向
     2. 按投影排序后的小穗点
     3. 样条拟合的主茎骨架
-    4. 小穗-主茎关联（投影点、左右侧、距离）
+    4. 小穗-主茎关联（交点、左右侧、距离）
     """
     # 1. 生成模拟数据（模拟麦穗小穗中心点）
     # 模拟弯曲的麦穗小穗分布
@@ -254,7 +254,7 @@ def test_skeleton_builder_visualization():
 
     # ========== 子图4：小穗-主茎关联关系 ==========
     ax4 = axes[1, 1]
-    spikelet_proj = skeleton['spikelet_proj']
+    spikelet_intersections = skeleton['spikelet_intersections']
     spikelet_side = skeleton['spikelet_side']
     # 绘制主茎
     ax4.plot(stem_points[:, 0], stem_points[:, 1], 'green', linewidth=3, label='主茎骨架')
@@ -265,10 +265,10 @@ def test_skeleton_builder_visualization():
     ax4.scatter(centers[right_idx, 0], centers[right_idx, 1], c='cyan', s=80, label='右侧小穗', alpha=0.8)
     # 绘制小穗到主茎的连接线
     for i in range(len(centers)):
-        ax4.plot([centers[i,0], spikelet_proj[i,0]], [centers[i,1], spikelet_proj[i,1]],
+        ax4.plot([centers[i,0], spikelet_intersections[i,0]], [centers[i,1], spikelet_intersections[i,1]],
                  'gray', linestyle='--', alpha=0.5)
-        ax4.scatter(spikelet_proj[i,0], spikelet_proj[i,1], c='red', s=30, marker='*')
-    ax4.set_title('步骤4-5：小穗-主茎关联（投影点/左右侧）', fontweight='bold')
+        ax4.scatter(spikelet_intersections[i,0], spikelet_intersections[i,1], c='red', s=30, marker='*')
+    ax4.set_title('步骤4-5：小穗-主茎关联（交点/左右侧）', fontweight='bold')
     ax4.set_xlabel('X坐标 (像素)')
     ax4.set_ylabel('Y坐标 (像素)')
     ax4.legend()
@@ -282,7 +282,7 @@ def test_skeleton_builder_visualization():
 
     # 输出关键数值结果
     print("===== 算法关键结果 =====")
-    print(f"主茎长度: {skeleton['stem_length']:.2f} 像素")
+    print(f"主茎弧长: {skeleton['stem_length']:.2f} 像素")
     print(f"主茎主方向向量: ({skeleton['main_dir'][0]:.3f}, {skeleton['main_dir'][1]:.3f})")
     print(f"小穗数量: {len(centers)}")
     print(f"左侧小穗数量: {sum(skeleton['spikelet_side'] == -1)}")

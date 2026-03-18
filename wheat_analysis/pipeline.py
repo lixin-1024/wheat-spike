@@ -122,7 +122,7 @@ class WheatAnalysisPipeline:
                 csv_rows.append({
                     'image': img_path.name,
                     'spikelet_count': ear['spikelet_count'],
-                    'effective_stem_length': f"{ear['effective_stem_length']:.2f}",
+                    'stem_length': f"{ear['stem_length']:.2f}",
                     'mean_length': f"{ear['mean_spikelet_length']:.2f}",
                     'mean_width': f"{ear['mean_spikelet_width']:.2f}",
                     'mean_aspect_ratio': f"{ear['mean_aspect_ratio']:.2f}",

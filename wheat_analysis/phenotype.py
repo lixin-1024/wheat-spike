@@ -51,7 +51,7 @@ class PhenotypeExtractor:
                 'spikelet_count': int,                 # 小穗数
                 'mean_spikelet_length': float,         # 平均小穗长度
                 'mean_spikelet_width': float,          # 平均小穗宽度
-                'mean_aspect_ratio': float,            # 平均长宽比
+                'mean_aspect_ratio': float,            # 平均小穗长宽比
                 'ECI': float,                          # 穗型紧密度指数
                 'SDU': float,                          # 小穗分布均匀度
                 'SCO': float,                          # 穗型重心偏移度
@@ -67,18 +67,16 @@ class PhenotypeExtractor:
         spikelet_dist = skeleton['spikelet_dist']
         spikelet_side = skeleton['spikelet_side']
 
-        # 有效穗段长度：从第一个小穗到最后一个小穗在主茎上的实际距离
         s_min, s_max = spikelet_s.min(), spikelet_s.max()
-        effective_length = (s_max - s_min) * stem_length
 
         # ---- ECI: 穗型紧密度指数 ----
-        # ECI = N / effective_length
-        ECI = N / effective_length if effective_length > 0 else 0.0
+        # ECI = N / 主茎弧长
+        ECI = N / stem_length if stem_length > 0 else 0.0
 
         # ---- SDU: 小穗分布均匀度 ----
-        # 将 [s_min, s_max] 分成 K 段，统计每段小穗数，计算变异系数
+        # 将 [0, 1] 分成 K 段，统计每段小穗数，计算变异系数
         K = min(self.K, N)
-        bin_edges = np.linspace(s_min, s_max, K + 1)
+        bin_edges = np.linspace(0.0, 1.0, K + 1)
         counts_per_segment = np.zeros(K)
         for i in range(K):
             lo, hi = bin_edges[i], bin_edges[i + 1]
@@ -91,12 +89,8 @@ class PhenotypeExtractor:
         SDU = std_count / mean_count if mean_count > 0 else 0.0
 
         # ---- SCO: 穗型重心偏移度 ----
-        # 将 s 归一化到 [0, 1] 范围（相对于有效穗段）
-        if s_max > s_min:
-            s_normalized = (spikelet_s - s_min) / (s_max - s_min)
-        else:
-            s_normalized = np.full(N, 0.5)
-        SCO = s_normalized.mean()
+        # spikelet_s 本身就是相对主茎弧长归一化到 [0, 1]
+        SCO = spikelet_s.mean()
 
         # ---- SHI: 穗型异质性指数 ----
         # 构建穗型向量：每段的 [小穗数, 平均大小, 平均间距]
@@ -109,7 +103,7 @@ class PhenotypeExtractor:
 
         return {
             'spikelet_count': N,
-            'effective_stem_length': effective_length,
+            'stem_length': stem_length,
             'mean_spikelet_length': detection['heights'].mean(),
             'mean_spikelet_width': detection['widths'].mean(),
             'mean_aspect_ratio': (detection['heights'] / np.maximum(detection['widths'], 1e-6)).mean(),
