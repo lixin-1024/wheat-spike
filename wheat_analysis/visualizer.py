@@ -56,10 +56,10 @@ class Visualizer:
                      self.COLOR_STEM, 3)
 
         # 2. 绘制小穗长轴（最高点-最低点）
-        tops = skeleton.get('spikelet_anchor_points', skeleton['spikelet_centers'])
-        bottoms = skeleton.get('stem_fit_points', skeleton['spikelet_centers'])
+        tops = skeleton['spikelet_highest_points']
+        bottoms = skeleton['spikelet_lowest_points']
         sides = skeleton['spikelet_side']
-        centers = skeleton['spikelet_centers']
+        centers = detection['centers']
 
         # 构建排序标签: original_index → rank (1-based)
         spikelet_order = skeleton['spikelet_order']
@@ -102,10 +102,10 @@ class Visualizer:
                      self.COLOR_STEM, 3)
 
         # 3. 绘制小穗长轴和标注
-        tops = skeleton.get('spikelet_anchor_points', skeleton['spikelet_centers'])
-        bottoms = skeleton.get('stem_fit_points', skeleton['spikelet_centers'])
+        tops = skeleton['spikelet_highest_points']
+        bottoms = skeleton['spikelet_lowest_points']
         sides = skeleton['spikelet_side']
-        centers = skeleton['spikelet_centers']
+        centers = detection['centers']
         lengths = spikelet_pheno['lengths']
         widths = spikelet_pheno['widths']
 

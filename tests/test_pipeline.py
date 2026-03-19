@@ -41,7 +41,7 @@ class TestWheatAnalysisPipeline(unittest.TestCase):
         # 检查骨架
         skeleton = result['skeleton']
         self.assertIn('stem_points', skeleton)
-        self.assertIn('spikelet_anchor_points', skeleton)
+        self.assertIn('spikelet_highest_points', skeleton)
 
         # 检查表型参数
         ear_pheno = result['ear_pheno']
@@ -111,7 +111,7 @@ class TestSkeletonBuilder(unittest.TestCase):
         skeleton = self.skeleton_builder.build(detection)
 
         self.assertIn('stem_points', skeleton)
-        self.assertIn('spikelet_anchor_points', skeleton)
+        self.assertIn('spikelet_highest_points', skeleton)
         self.assertIn('spikelet_s', skeleton)
         self.assertIn('stem_length', skeleton)
 
