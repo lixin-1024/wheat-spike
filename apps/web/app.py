@@ -74,6 +74,12 @@ def serialize_result(result, stem_name):
             for k, v in result['ear_pheno'].items()
         }
 
+    if result.get('calibration'):
+        resp['calibration'] = {
+            k: float(v) if hasattr(v, 'item') else v
+            for k, v in result['calibration'].items()
+        }
+
     if result.get('spikelet_pheno'):
         sp = result['spikelet_pheno']
         resp['spikelet_pheno'] = {
@@ -83,6 +89,10 @@ def serialize_result(result, stem_name):
 
     if result.get('ear_vector') is not None:
         resp['ear_vector'] = result['ear_vector'].tolist()
+
+    if result.get('feature_vector') is not None:
+        resp['feature_names'] = result['feature_names']
+        resp['feature_vector'] = result['feature_vector'].tolist()
 
     return resp
 

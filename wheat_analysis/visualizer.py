@@ -139,13 +139,16 @@ class Visualizer:
         """在图像上绘制穗级表型摘要信息框"""
         lines = [
             f"Spikelets: {ear_pheno['spikelet_count']}",
-            f"Stem Arc Length: {ear_pheno['stem_length']:.1f} px",
-            f"ECI: {ear_pheno['ECI']:.4f}",
-            f"SDU: {ear_pheno['SDU']:.4f}",
-            f"SCO: {ear_pheno['SCO']:.4f}",
-            f"SHI: {ear_pheno['SHI']:.6f}",
+            f"Spike Length: {ear_pheno['spike_length_px']:.1f} px",
+            f"Mean Attach Angle: {ear_pheno['mean_attachment_angle']:.1f} deg",
+            f"Density(px): {ear_pheno['spikelet_density_px']:.4f}",
+            f"Asymmetry: {ear_pheno['asymmetry_index']:.4f}",
+            f"Centroid Offset: {ear_pheno['centroid_offset']:.4f}",
             f"Left/Right: {ear_pheno['left_count']}/{ear_pheno['right_count']}",
         ]
+
+        if ear_pheno.get('spike_length_cm') is not None:
+            lines.insert(2, f"Spike Length: {ear_pheno['spike_length_cm']:.2f} cm")
 
         x0, y0 = 20, 30
         line_h = 35

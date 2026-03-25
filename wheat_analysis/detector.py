@@ -5,14 +5,14 @@ import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 import numpy as np
-from pathlib import Path
-from ultralytics import YOLO
 
 
 class SpikeletDetector:
     """基于 YOLO11-OBB 的小穗检测器"""
 
     def __init__(self, model_path: str, imgsz: int = 1440, conf: float = 0.5):
+        from ultralytics import YOLO
+
         self.model = YOLO(model_path)
         self.imgsz = imgsz
         self.conf = conf
