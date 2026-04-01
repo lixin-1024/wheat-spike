@@ -11,7 +11,7 @@
 import argparse
 from pathlib import Path
 
-from wheat_analysis.pipeline import WheatAnalysisPipeline
+from wheat_analysis.pipeline import BatchImagePipeline
 
 
 def parse_args():
@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument("--model-path", required=True, help="YOLO OBB 模型路径")
     parser.add_argument("--imgsz", type=int, default=1440, help="模型输入尺寸")
     parser.add_argument("--conf", type=float, default=0.5, help="检测置信度阈值")
-    parser.add_argument("--clusters", type=int, default=3, help="KMeans 聚类数")
+    parser.add_argument("--clusters", type=int, default=3, help="层次聚类簇数")
     return parser.parse_args()
 
 
@@ -30,17 +30,19 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    pipeline = WheatAnalysisPipeline(
+    pipeline = BatchImagePipeline(
         model_path=args.model_path,
         imgsz=args.imgsz,
         conf=args.conf,
     )
-    results, cluster_result = pipeline.analyze_and_cluster_batch(
+    pipeline.cluster_analyzer.n_clusters = args.clusters
+    analysis = pipeline.analyze_dir(
         image_dir=args.image_dir,
         output_dir=str(output_dir),
-        n_clusters=args.clusters,
     )
 
+    results = analysis['results']
+    cluster_result = analysis['cluster']
     valid = sum(1 for result in results if result.get('ear_pheno'))
     print(f"完成批量分析: {valid}/{len(results)} 张图片产生有效表型结果")
     if cluster_result is not None:

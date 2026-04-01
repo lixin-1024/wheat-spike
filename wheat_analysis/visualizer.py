@@ -108,6 +108,7 @@ class Visualizer:
         centers = detection['centers']
         lengths = spikelet_pheno['lengths']
         widths = spikelet_pheno['widths']
+        angles = spikelet_pheno['attachment_angles_deg']
 
         # 构建排序标签
         spikelet_order = skeleton['spikelet_order']
@@ -125,8 +126,8 @@ class Visualizer:
             cv2.circle(vis, (bx, by), 3, color, -1)
             cv2.circle(vis, (cx, cy), 4, self.COLOR_CENTER, -1)
 
-            # 标注尺寸和排序序号
-            label = f"{order_labels[i] + 1}: L:{lengths[i]:.0f} W:{widths[i]:.0f}"
+            # 标注尺寸、着生角度和排序序号
+            label = f"{order_labels[i] + 1}: L:{lengths[i]:.0f} W:{widths[i]:.0f} A:{angles[i]:.1f}"
             cv2.putText(vis, label, (cx + 10, cy + 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, self.COLOR_TEXT, 1)
 
@@ -140,11 +141,11 @@ class Visualizer:
         lines = [
             f"Spikelets: {ear_pheno['spikelet_count']}",
             f"Spike Length: {ear_pheno['spike_length_px']:.1f} px",
+            f"Mean L/W: {ear_pheno['mean_spikelet_length']:.1f}/{ear_pheno['mean_spikelet_width']:.1f}",
             f"Mean Attach Angle: {ear_pheno['mean_attachment_angle']:.1f} deg",
-            f"Density(px): {ear_pheno['spikelet_density_px']:.4f}",
+            f"Density: {ear_pheno['spikelet_density_px']:.4f}",
             f"Asymmetry: {ear_pheno['asymmetry_index']:.4f}",
             f"Centroid Offset: {ear_pheno['centroid_offset']:.4f}",
-            f"Left/Right: {ear_pheno['left_count']}/{ear_pheno['right_count']}",
         ]
 
         if ear_pheno.get('spike_length_cm') is not None:

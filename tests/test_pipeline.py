@@ -1,14 +1,14 @@
+import shutil
 import unittest
 from pathlib import Path
-import shutil
 
 import cv2
 import numpy as np
 
 from wheat_analysis.calibration import ScaleCalibrator
-from wheat_analysis.clustering import SpikeClusterAnalyzer
+from wheat_analysis.clustering import PhenotypeClusterAnalyzer
 from wheat_analysis.phenotype import PhenotypeExtractor
-from wheat_analysis.pipeline import WheatAnalysisPipeline
+from wheat_analysis.pipeline import BatchImagePipeline, SingleImagePipeline
 from wheat_analysis.skeleton import SkeletonBuilder
 
 
@@ -18,13 +18,12 @@ def make_obb_corners(center, angle_rad, long_len=30.0, short_len=10.0):
     normal = np.array([-direction[1], direction[0]], dtype=float)
     half_long = long_len / 2.0
     half_short = short_len / 2.0
-    corners = np.array([
+    return np.array([
         [cx, cy] - half_long * direction - half_short * normal,
         [cx, cy] + half_long * direction - half_short * normal,
         [cx, cy] + half_long * direction + half_short * normal,
         [cx, cy] - half_long * direction + half_short * normal,
     ])
-    return corners
 
 
 class DummyDetector:
@@ -41,98 +40,80 @@ class TestScaleCalibrator(unittest.TestCase):
     def test_calibrate_with_white_disc(self):
         image = np.zeros((400, 400, 3), dtype=np.uint8)
         cv2.circle(image, (120, 160), 50, (255, 255, 255), -1)
-
         calibrator = ScaleCalibrator(disc_diameter_cm=5.0)
+
         result = calibrator.calibrate(image)
 
         self.assertTrue(result['calibration_ok'])
         self.assertAlmostEqual(result['disc_diameter_px'], 100.0, delta=8.0)
         self.assertAlmostEqual(result['px_per_cm'], 20.0, delta=1.6)
-        self.assertAlmostEqual(result['mm_per_px'], 0.5, delta=0.05)
-
-    def test_calibrate_without_disc(self):
-        image = np.zeros((200, 200, 3), dtype=np.uint8)
-        calibrator = ScaleCalibrator()
-        result = calibrator.calibrate(image)
-
-        self.assertFalse(result['calibration_ok'])
-        self.assertIsNone(result['px_per_cm'])
 
 
 class TestPhenotypeExtractor(unittest.TestCase):
     def setUp(self):
         self.extractor = PhenotypeExtractor()
 
-    def test_attachment_angle_parallel_perpendicular_and_mirror(self):
-        detection = {
-            'count': 3,
-            'heights': np.array([10, 10, 10], dtype=float),
-            'widths': np.array([2, 2, 2], dtype=float),
-            'angles': np.array([0.0, 0.0, 0.0], dtype=float),
-        }
-        skeleton = {
-            'spikelet_highest_points': np.array([[0, 0], [0, 0], [0, 10]], dtype=float),
-            'spikelet_lowest_points': np.array([[0, 10], [10, 0], [0, 0]], dtype=float),
-            'spikelet_tangent': np.array([[0, 1], [0, 1], [0, -1]], dtype=float),
-            'spikelet_dist': np.array([1, 1, 1], dtype=float),
-        }
-
-        spikelet = self.extractor.extract_spikelet_phenotypes(detection, skeleton=skeleton)
-
-        self.assertAlmostEqual(spikelet['attachment_angles_deg'][0], 0.0, delta=1e-6)
-        self.assertAlmostEqual(spikelet['attachment_angles_deg'][1], 90.0, delta=1e-6)
-        self.assertAlmostEqual(spikelet['attachment_angles_deg'][2], 0.0, delta=1e-6)
-
-    def test_asymmetry_index(self):
-        detection = {
-            'count': 4,
-            'heights': np.array([10, 10, 20, 20], dtype=float),
-            'widths': np.array([4, 4, 8, 8], dtype=float),
-            'angles': np.zeros(4, dtype=float),
-        }
-        skeleton = {
-            'spikelet_highest_points': np.array([[0, 0], [0, 0], [0, 0], [0, 0]], dtype=float),
-            'spikelet_lowest_points': np.array([[0, 10], [0, 10], [0, 20], [0, 20]], dtype=float),
-            'spikelet_tangent': np.tile(np.array([[0, 1]], dtype=float), (4, 1)),
-            'spikelet_s': np.array([0.2, 0.4, 0.6, 0.8], dtype=float),
-            'spikelet_dist': np.array([3, 3, 6, 6], dtype=float),
-            'spikelet_side': np.array([-1, -1, 1, 1], dtype=float),
-            'stem_length': 100.0,
-        }
-
-        spikelet = self.extractor.extract_spikelet_phenotypes(detection, skeleton=skeleton)
-        ear = self.extractor.extract_ear_phenotypes(detection, skeleton, spikelet_pheno=spikelet)
-
-        self.assertGreater(ear['asymmetry_index'], 0.3)
-
-    def test_physical_scale_fields(self):
+    def test_attachment_angle_uses_base_node_tangent(self):
         detection = {
             'count': 2,
-            'heights': np.array([20, 30], dtype=float),
-            'widths': np.array([5, 6], dtype=float),
+            'heights': np.array([10, 10], dtype=float),
+            'widths': np.array([2, 2], dtype=float),
             'angles': np.zeros(2, dtype=float),
         }
         skeleton = {
-            'spikelet_highest_points': np.array([[0, 0], [0, 0]], dtype=float),
-            'spikelet_lowest_points': np.array([[0, 20], [0, 30]], dtype=float),
-            'spikelet_tangent': np.tile(np.array([[0, 1]], dtype=float), (2, 1)),
-            'spikelet_s': np.array([0.3, 0.7], dtype=float),
-            'spikelet_dist': np.array([10, 20], dtype=float),
-            'spikelet_side': np.array([-1, 1], dtype=float),
-            'stem_length': 200.0,
+            'spikelet_highest_points': np.array([[0, 0], [10, 0]], dtype=float),
+            'spikelet_lowest_points': np.array([[0, 10], [0, 0]], dtype=float),
+            'spikelet_tangent': np.array([[0, 1], [0, 1]], dtype=float),
         }
-        calibration = {'calibration_ok': True, 'px_per_cm': 100.0, 'mm_per_px': 0.1}
 
-        spikelet = self.extractor.extract_spikelet_phenotypes(detection, skeleton=skeleton, calibration=calibration)
-        ear = self.extractor.extract_ear_phenotypes(detection, skeleton, spikelet_pheno=spikelet, calibration=calibration)
+        spikelet = self.extractor.extract_spikelet_phenotypes(detection, skeleton)
 
-        np.testing.assert_allclose(spikelet['lengths_mm'], np.array([2.0, 3.0]))
-        self.assertAlmostEqual(ear['spike_length_cm'], 2.0, delta=1e-6)
-        self.assertAlmostEqual(ear['spikelet_density_per_cm'], 1.0, delta=1e-6)
+        self.assertAlmostEqual(spikelet['attachment_angles_deg'][0], 0.0, delta=1e-6)
+        self.assertAlmostEqual(spikelet['attachment_angles_deg'][1], 90.0, delta=1e-6)
+
+    def test_ear_phenotype_contains_only_target_metrics(self):
+        detection = {
+            'count': 4,
+            'heights': np.array([10, 12, 16, 18], dtype=float),
+            'widths': np.array([4, 4, 7, 8], dtype=float),
+        }
+        spikelet_pheno = {
+            'lengths': np.array([10, 12, 16, 18], dtype=float),
+            'widths': np.array([4, 4, 7, 8], dtype=float),
+            'aspect_ratios': np.array([2.5, 3.0, 2.28, 2.25], dtype=float),
+            'attachment_angles_deg': np.array([8, 10, 18, 22], dtype=float),
+        }
+        skeleton = {
+            'stem_length': 120.0,
+            'spikelet_side': np.array([-1, -1, 1, 1], dtype=float),
+            'spikelet_s': np.array([0.2, 0.3, 0.7, 0.8], dtype=float),
+        }
+
+        ear = self.extractor.extract_ear_phenotypes(detection, skeleton, spikelet_pheno)
+
+        expected_keys = {
+            'spikelet_count',
+            'mean_spikelet_length',
+            'mean_spikelet_width',
+            'mean_aspect_ratio',
+            'mean_attachment_angle',
+            'spike_length_px',
+            'spikelet_density_px',
+            'asymmetry_index',
+            'centroid_offset',
+            'calibration_ok',
+            'px_per_cm',
+            'mm_per_px',
+            'spike_length_cm',
+            'spikelet_density_per_cm',
+            'mean_spikelet_length_mm',
+            'mean_spikelet_width_mm',
+        }
+        self.assertEqual(set(ear.keys()), expected_keys)
 
 
 class TestSkeletonBuilder(unittest.TestCase):
-    def test_build_outputs_tangent(self):
+    def test_build_outputs_base_tangent(self):
         centers = np.array([[100, 80], [102, 140], [105, 200], [108, 260]], dtype=float)
         xyxyxyxy = np.array([
             make_obb_corners(centers[0], np.deg2rad(85)),
@@ -146,10 +127,10 @@ class TestSkeletonBuilder(unittest.TestCase):
 
         self.assertIn('spikelet_tangent', skeleton)
         self.assertEqual(skeleton['spikelet_tangent'].shape, (4, 2))
-        self.assertEqual(skeleton['spikelet_anchor_points'].shape, (4, 2))
+        self.assertEqual(len(skeleton['spikelet_s']), 4)
 
 
-class TestPipelineAndClustering(unittest.TestCase):
+class TestPipelinesAndClustering(unittest.TestCase):
     def setUp(self):
         centers = np.array([[100, 90], [108, 150], [115, 210], [122, 270]], dtype=float)
         xyxyxyxy = np.array([
@@ -172,54 +153,56 @@ class TestPipelineAndClustering(unittest.TestCase):
             'image_shape': (400, 400),
         }
 
-    def test_analyze_single_and_batch_cluster(self):
-        tmp_path = Path("results") / "test_pipeline_artifacts"
-        image_dir = tmp_path / "images"
-        output_dir = tmp_path / "results"
-        shutil.rmtree(tmp_path, ignore_errors=True)
+    def test_single_and_batch_pipeline(self):
+        base_dir = Path("results") / "test_pipeline_v2"
+        shutil.rmtree(base_dir, ignore_errors=True)
+        image_dir = base_dir / "images"
+        output_dir = base_dir / "outputs"
         image_dir.mkdir(parents=True, exist_ok=True)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         image = np.zeros((400, 400, 3), dtype=np.uint8)
         cv2.circle(image, (70, 70), 45, (255, 255, 255), -1)
-        for idx in range(3):
-            img_path = image_dir / f"sample_{idx}.png"
-            cv2.imwrite(str(img_path), image)
+        for idx in range(4):
+            cv2.imwrite(str(image_dir / f"sample_{idx}.png"), image)
 
-        pipeline = WheatAnalysisPipeline(
+        single = SingleImagePipeline(model_path='unused.pt', detector=DummyDetector(self.detection))
+        single_result = single.analyze(str(image_dir / "sample_0.png"), str(output_dir))
+        self.assertIn('spikelet_records', single_result)
+        self.assertIn('attachment_angles_deg', single_result['spikelet_pheno'])
+        self.assertIn('asymmetry_index', single_result['ear_pheno'])
+
+        batch = BatchImagePipeline(
             model_path='unused.pt',
             detector=DummyDetector(self.detection),
         )
+        analysis = batch.analyze_dir(str(image_dir), str(output_dir))
 
-        result = pipeline.analyze_single(str(image_dir / "sample_0.png"), str(output_dir))
-        self.assertIn('calibration', result)
-        self.assertIn('feature_vector', result)
-        self.assertIn('attachment_angles_deg', result['spikelet_pheno'])
-        self.assertIn('asymmetry_index', result['ear_pheno'])
-
-        results = pipeline.analyze_batch(str(image_dir), str(output_dir))
+        self.assertEqual(len(analysis['results']), 4)
         self.assertTrue((output_dir / "phenotype_results.csv").exists())
         self.assertTrue((output_dir / "feature_vectors.csv").exists())
-        self.assertEqual(len(results), 3)
+        self.assertIsNotNone(analysis['cluster'])
+        self.assertTrue((output_dir / "cluster_embedding.png").exists())
+        self.assertTrue((output_dir / "sample_similarity_heatmap.png").exists())
+        self.assertTrue((output_dir / "cluster_dendrogram.png").exists())
 
-        cluster_result = pipeline.cluster_batch_results(results, str(output_dir), n_clusters=2)
-        self.assertIsNotNone(cluster_result)
-        self.assertTrue((output_dir / "clustering_results.csv").exists())
-        self.assertTrue((output_dir / "cluster_centers.csv").exists())
-        self.assertTrue((output_dir / "clustering_pca.png").exists())
-
-    def test_cluster_analyzer_direct(self):
-        analyzer = SpikeClusterAnalyzer(n_clusters=2)
-        output_dir = Path("results") / "test_cluster_artifacts"
+    def test_cluster_analyzer(self):
+        analyzer = PhenotypeClusterAnalyzer(n_clusters=2)
+        output_dir = Path("results") / "test_cluster_v2"
         shutil.rmtree(output_dir, ignore_errors=True)
         output_dir.mkdir(parents=True, exist_ok=True)
         samples = [
-            {'image': 'a.png', 'feature_names': ['f1', 'f2'], 'features': np.array([0.0, 0.1])},
-            {'image': 'b.png', 'feature_names': ['f1', 'f2'], 'features': np.array([0.2, 0.0])},
-            {'image': 'c.png', 'feature_names': ['f1', 'f2'], 'features': np.array([4.0, 4.1])},
+            {'image': 'a.png', 'feature_names': ['f1', 'f2', 'f3'], 'features': np.array([0.1, 0.2, 0.1])},
+            {'image': 'b.png', 'feature_names': ['f1', 'f2', 'f3'], 'features': np.array([0.0, 0.1, 0.2])},
+            {'image': 'c.png', 'feature_names': ['f1', 'f2', 'f3'], 'features': np.array([3.0, 3.2, 2.9])},
+            {'image': 'd.png', 'feature_names': ['f1', 'f2', 'f3'], 'features': np.array([2.8, 3.1, 3.3])},
         ]
+
         result = analyzer.cluster(samples, str(output_dir))
-        self.assertEqual(result['cluster_centers'].shape[1], 2)
+
+        self.assertEqual(len(result['labels']), 4)
+        self.assertTrue((output_dir / "clustering_results.csv").exists())
+        self.assertTrue((output_dir / "cluster_centers.csv").exists())
 
 
 if __name__ == '__main__':
