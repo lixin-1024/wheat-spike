@@ -1368,28 +1368,28 @@ function renderClusterCompare(cluster) {
     }
 
     const spikeletMetrics = [
-        { key: 'mean_spikelet_length_mm', label: '平均小穗长度', unit: 'mm', group: '小穗级均值', groupClass: 'spikelet' },
-        { key: 'mean_spikelet_width_mm', label: '平均小穗宽度', unit: 'mm', group: '小穗级均值', groupClass: 'spikelet' },
-        { key: 'mean_aspect_ratio', label: '平均小穗长宽比', unit: '', group: '小穗级均值', groupClass: 'spikelet' },
-        { key: 'mean_attachment_angle', label: '平均着生角', unit: '°', group: '小穗级均值', groupClass: 'spikelet' },
+        { key: 'mean_spikelet_length_mm', label: '平均小穗长度', unit: 'mm', group: '小穗级特征', groupClass: 'spikelet' },
+        { key: 'mean_spikelet_width_mm', label: '平均小穗宽度', unit: 'mm', group: '小穗级特征', groupClass: 'spikelet' },
+        { key: 'mean_aspect_ratio', label: '平均小穗长宽比', unit: '', group: '小穗级特征', groupClass: 'spikelet' },
+        { key: 'mean_attachment_angle', label: '平均着生角', unit: '°', group: '小穗级特征', groupClass: 'spikelet' },
     ];
     const earMetrics = [
-        { key: 'mean_spike_length_cm', label: '穗长', unit: 'cm', group: '穗级指标', groupClass: 'ear' },
-        { key: 'spikelet_count', label: '小穗数', unit: '', group: '穗级指标', groupClass: 'ear' },
-        { key: 'spikelet_density', label: '着生密度', unit: '', group: '穗级指标', groupClass: 'ear' },
-        { key: 'mean_asymmetry_index', label: '对称度', unit: '', group: '穗级指标', groupClass: 'ear' },
-        { key: 'mean_centroid_offset', label: '重心偏移度', unit: '', group: '穗级指标', groupClass: 'ear' },
+        { key: 'mean_spike_length_cm', label: '穗长', unit: 'cm', group: '穗级特征', groupClass: 'ear' },
+        { key: 'spikelet_count', label: '小穗数', unit: '', group: '穗级特征', groupClass: 'ear' },
+        { key: 'spikelet_density', label: '着生密度', unit: '', group: '穗级特征', groupClass: 'ear' },
+        { key: 'mean_asymmetry_index', label: '对称度', unit: '', group: '穗级特征', groupClass: 'ear' },
+        { key: 'mean_centroid_offset', label: '重心偏移度', unit: '', group: '穗级特征', groupClass: 'ear' },
     ];
     const metrics = [...spikeletMetrics, ...earMetrics];
 
     refs.clusterCompareChart.innerHTML = `
         <div class="compare-radar-grid">
             <div class="compare-radar-shell">
-                <div class="compare-radar__title">雷达图 • 小穗级均值</div>
+                <div class="compare-radar__title">雷达图 • 小穗级特征</div>
                 ${renderClusterRadar(selected, spikeletMetrics)}
             </div>
             <div class="compare-radar-shell">
-                <div class="compare-radar__title">雷达图 • 穗级指标</div>
+                <div class="compare-radar__title">雷达图 • 穗级特征</div>
                 ${renderClusterRadar(selected, earMetrics)}
             </div>
         </div>
@@ -1771,15 +1771,15 @@ function buildResultMap(results) {
 
 function getClusterMetricOptions(cluster) {
     const preferredMetrics = [
-        { key: 'mean_spikelet_length_mm', label: '平均小穗长度', group: 'spikelet', groupLabel: '小穗级均值' },
-        { key: 'mean_spikelet_width_mm', label: '平均小穗宽度', group: 'spikelet', groupLabel: '小穗级均值' },
-        { key: 'mean_aspect_ratio', label: '平均小穗长宽比', group: 'spikelet', groupLabel: '小穗级均值' },
-        { key: 'mean_attachment_angle', label: '平均着生角', group: 'spikelet', groupLabel: '小穗级均值' },
-        { key: 'mean_spike_length_cm', label: '穗长', group: 'ear', groupLabel: '穗级指标' },
-        { key: 'spikelet_count', label: '小穗数', group: 'ear', groupLabel: '穗级指标' },
-        { key: 'spikelet_density', label: '着生密度', group: 'ear', groupLabel: '穗级指标' },
-        { key: 'mean_asymmetry_index', label: '对称度', group: 'ear', groupLabel: '穗级指标' },
-        { key: 'mean_centroid_offset', label: '重心偏移度', group: 'ear', groupLabel: '穗级指标' },
+        { key: 'mean_spikelet_length_mm', label: '平均小穗长度', group: 'spikelet', groupLabel: '小穗级特征' },
+        { key: 'mean_spikelet_width_mm', label: '平均小穗宽度', group: 'spikelet', groupLabel: '小穗级特征' },
+        { key: 'mean_aspect_ratio', label: '平均小穗长宽比', group: 'spikelet', groupLabel: '小穗级特征' },
+        { key: 'mean_attachment_angle', label: '平均着生角', group: 'spikelet', groupLabel: '小穗级特征' },
+        { key: 'mean_spike_length_cm', label: '穗长', group: 'ear', groupLabel: '穗级特征' },
+        { key: 'spikelet_count', label: '小穗数', group: 'ear', groupLabel: '穗级特征' },
+        { key: 'spikelet_density', label: '着生密度', group: 'ear', groupLabel: '穗级特征' },
+        { key: 'mean_asymmetry_index', label: '对称度', group: 'ear', groupLabel: '穗级特征' },
+        { key: 'mean_centroid_offset', label: '重心偏移度', group: 'ear', groupLabel: '穗级特征' },
     ];
     const availableMetrics = cluster?.clusters?.[0]?.aggregate_metrics || {};
     return preferredMetrics.filter(metric => Object.prototype.hasOwnProperty.call(availableMetrics, metric.key));
@@ -1920,36 +1920,36 @@ function formatClusterMetric(value, unit = '') {
 function buildNineSampleMetricRows(ear) {
     const safeEar = ear || {};
     return [
-        { group: '小穗级均值', label: '平均小穗长度', value: formatMetric(safeEar.mean_spikelet_length_mm, 'mm', safeEar.mean_spikelet_length ?? 0, 'px') },
-        { group: '小穗级均值', label: '平均小穗宽度', value: formatMetric(safeEar.mean_spikelet_width_mm, 'mm', safeEar.mean_spikelet_width ?? 0, 'px') },
-        { group: '小穗级均值', label: '平均小穗长宽比', value: Number(safeEar.mean_aspect_ratio ?? 0).toFixed(3) },
-        { group: '小穗级均值', label: '平均着生角', value: `${Number(safeEar.mean_attachment_angle ?? 0).toFixed(2)} °` },
-        { group: '穗级指标', label: '穗长', value: formatMetric(safeEar.spike_length_cm, 'cm', safeEar.spike_length_px ?? 0, 'px') },
-        { group: '穗级指标', label: '小穗数', value: String(Math.round(Number(safeEar.spikelet_count ?? 0))) },
-        { group: '穗级指标', label: '着生密度', value: formatMetric(safeEar.spikelet_density_per_cm, '/cm', safeEar.spikelet_density_px ?? 0, '/px') },
-        { group: '穗级指标', label: '对称度', value: Number(safeEar.asymmetry_index ?? 0).toFixed(4) },
-        { group: '穗级指标', label: '重心偏移度', value: Number(safeEar.centroid_offset ?? 0).toFixed(4) },
+        { group: '小穗级特征', label: '平均小穗长度', value: formatMetric(safeEar.mean_spikelet_length_mm, 'mm', safeEar.mean_spikelet_length ?? 0, 'px') },
+        { group: '小穗级特征', label: '平均小穗宽度', value: formatMetric(safeEar.mean_spikelet_width_mm, 'mm', safeEar.mean_spikelet_width ?? 0, 'px') },
+        { group: '小穗级特征', label: '平均小穗长宽比', value: Number(safeEar.mean_aspect_ratio ?? 0).toFixed(3) },
+        { group: '小穗级特征', label: '平均着生角', value: `${Number(safeEar.mean_attachment_angle ?? 0).toFixed(2)} °` },
+        { group: '穗级特征', label: '穗长', value: formatMetric(safeEar.spike_length_cm, 'cm', safeEar.spike_length_px ?? 0, 'px') },
+        { group: '穗级特征', label: '小穗数', value: String(Math.round(Number(safeEar.spikelet_count ?? 0))) },
+        { group: '穗级特征', label: '着生密度', value: formatMetric(safeEar.spikelet_density_per_cm, '/cm', safeEar.spikelet_density_px ?? 0, '/px') },
+        { group: '穗级特征', label: '对称度', value: Number(safeEar.asymmetry_index ?? 0).toFixed(4) },
+        { group: '穗级特征', label: '重心偏移度', value: Number(safeEar.centroid_offset ?? 0).toFixed(4) },
     ];
 }
 
 function buildNineClusterMetricRows(clusterItem) {
     const metrics = clusterItem?.aggregate_metrics || {};
     return [
-        { group: '小穗级均值', label: '平均小穗长度', value: formatClusterMetric(metrics.mean_spikelet_length_mm, 'mm') },
-        { group: '小穗级均值', label: '平均小穗宽度', value: formatClusterMetric(metrics.mean_spikelet_width_mm, 'mm') },
-        { group: '小穗级均值', label: '平均小穗长宽比', value: formatClusterMetric(metrics.mean_aspect_ratio, '') },
-        { group: '小穗级均值', label: '平均着生角', value: formatClusterMetric(metrics.mean_attachment_angle, '°') },
-        { group: '穗级指标', label: '穗长', value: formatClusterMetric(metrics.mean_spike_length_cm, 'cm') },
-        { group: '穗级指标', label: '小穗数', value: formatClusterMetric(metrics.spikelet_count, '') },
-        { group: '穗级指标', label: '着生密度', value: formatClusterMetric(metrics.spikelet_density, '') },
-        { group: '穗级指标', label: '对称度', value: formatClusterMetric(metrics.mean_asymmetry_index, '') },
-        { group: '穗级指标', label: '重心偏移度', value: formatClusterMetric(metrics.mean_centroid_offset, '') },
+        { group: '小穗级特征', label: '平均小穗长度', value: formatClusterMetric(metrics.mean_spikelet_length_mm, 'mm') },
+        { group: '小穗级特征', label: '平均小穗宽度', value: formatClusterMetric(metrics.mean_spikelet_width_mm, 'mm') },
+        { group: '小穗级特征', label: '平均小穗长宽比', value: formatClusterMetric(metrics.mean_aspect_ratio, '') },
+        { group: '小穗级特征', label: '平均着生角', value: formatClusterMetric(metrics.mean_attachment_angle, '°') },
+        { group: '穗级特征', label: '穗长', value: formatClusterMetric(metrics.mean_spike_length_cm, 'cm') },
+        { group: '穗级特征', label: '小穗数', value: formatClusterMetric(metrics.spikelet_count, '') },
+        { group: '穗级特征', label: '着生密度', value: formatClusterMetric(metrics.spikelet_density, '') },
+        { group: '穗级特征', label: '对称度', value: formatClusterMetric(metrics.mean_asymmetry_index, '') },
+        { group: '穗级特征', label: '重心偏移度', value: formatClusterMetric(metrics.mean_centroid_offset, '') },
     ];
 }
 
 function renderGroupedMetricCards(rows) {
-    const spikeletRows = rows.filter(item => item.group === '小穗级均值');
-    const earRows = rows.filter(item => item.group === '穗级指标');
+    const spikeletRows = rows.filter(item => item.group === '小穗级特征');
+    const earRows = rows.filter(item => item.group === '穗级特征');
     const renderSection = (title, groupClass, items) => `
         <section class="cluster-modal__section cluster-modal__section--${groupClass}">
             <h4>${title}</h4>
@@ -1964,7 +1964,7 @@ function renderGroupedMetricCards(rows) {
         </section>
     `;
 
-    return `${renderSection('小穗级均值', 'spikelet', spikeletRows)}${renderSection('穗级指标', 'ear', earRows)}`;
+    return `${renderSection('小穗级特征', 'spikelet', spikeletRows)}${renderSection('穗级特征', 'ear', earRows)}`;
 }
 
 function renderHoverMetricRows(rows) {
@@ -1982,8 +1982,8 @@ function showClusterHoverCardForSample(event, result, clusterLabel, options = {}
         return;
     }
     const rows = buildNineSampleMetricRows(result.ear_pheno || {});
-    const spikeletRows = rows.filter(item => item.group === '小穗级均值');
-    const earRows = rows.filter(item => item.group === '穗级指标');
+    const spikeletRows = rows.filter(item => item.group === '小穗级特征');
+    const earRows = rows.filter(item => item.group === '穗级特征');
     const showImage = options.showImage !== false;
     const imageUrl = result.images?.original || result.images?.analysis || '';
 
@@ -1994,9 +1994,9 @@ function showClusterHoverCardForSample(event, result, clusterLabel, options = {}
                 <div class="cluster-hover-card__body cluster-hover-card__body--metrics-only">
                     <h4>${result.image_name || result.filename}</h4>
                     <p>Cluster ${displayClusterLabel}</p>
-                    <div class="cluster-hover-card__group">小穗级均值</div>
+                    <div class="cluster-hover-card__group">小穗级特征</div>
                     ${renderHoverMetricRows(spikeletRows)}
-                    <div class="cluster-hover-card__group">穗级指标</div>
+                    <div class="cluster-hover-card__group">穗级特征</div>
                     ${renderHoverMetricRows(earRows)}
                 </div>
                 <div class="cluster-hover-card__image-wrap"><img class="cluster-hover-card__image" src="${imageUrl}" alt="${result.image_name || result.filename}"></div>
@@ -2008,9 +2008,9 @@ function showClusterHoverCardForSample(event, result, clusterLabel, options = {}
             <div class="cluster-hover-card__body cluster-hover-card__body--metrics-only">
                 <h4>${result.image_name || result.filename}</h4>
                 <p>Cluster ${displayClusterLabel}</p>
-                <div class="cluster-hover-card__group">小穗级均值</div>
+                <div class="cluster-hover-card__group">小穗级特征</div>
                 ${renderHoverMetricRows(spikeletRows)}
-                <div class="cluster-hover-card__group">穗级指标</div>
+                <div class="cluster-hover-card__group">穗级特征</div>
                 ${renderHoverMetricRows(earRows)}
             </div>
         `;
@@ -2027,16 +2027,16 @@ function showClusterHoverCardForCluster(event, clusterItem) {
     }
 
     const rows = buildNineClusterMetricRows(clusterItem);
-    const spikeletRows = rows.filter(item => item.group === '小穗级均值');
-    const earRows = rows.filter(item => item.group === '穗级指标');
+    const spikeletRows = rows.filter(item => item.group === '小穗级特征');
+    const earRows = rows.filter(item => item.group === '穗级特征');
 
     refs.clusterHoverCard.innerHTML = `
         <div class="cluster-hover-card__body cluster-hover-card__body--metrics-only">
             <h4>第 ${clusterItem.cluster_id + 1} 类</h4>
             <p>样本数：${clusterItem.sample_count}</p>
-            <div class="cluster-hover-card__group">小穗级均值</div>
+            <div class="cluster-hover-card__group">小穗级特征</div>
             ${renderHoverMetricRows(spikeletRows)}
-            <div class="cluster-hover-card__group">穗级指标</div>
+            <div class="cluster-hover-card__group">穗级特征</div>
             ${renderHoverMetricRows(earRows)}
         </div>
     `;
@@ -2059,17 +2059,17 @@ function showClusterHoverCardForDendrogramNode(event, cluster, nodeId) {
     }
     const extra = node.sample_names.length > 1 ? ` +${node.sample_names.length - 1} 个样本` : '';
     const rows = buildNineSampleMetricRows(sample.ear_pheno || {});
-    const spikeletRows = rows.filter(item => item.group === '小穗级均值');
-    const earRows = rows.filter(item => item.group === '穗级指标');
+    const spikeletRows = rows.filter(item => item.group === '小穗级特征');
+    const earRows = rows.filter(item => item.group === '穗级特征');
     const imageUrl = sample.images?.original || sample.images?.analysis || '';
     refs.clusterHoverCard.innerHTML = `
         <div class="cluster-hover-card__layout">
             <div class="cluster-hover-card__body cluster-hover-card__body--metrics-only">
                 <h4>${sample.image_name || sample.filename}${extra}</h4>
                 <p>树节点覆盖 ${node.sample_names.length} 个样本</p>
-                <div class="cluster-hover-card__group">小穗级均值</div>
+                <div class="cluster-hover-card__group">小穗级特征</div>
                 ${renderHoverMetricRows(spikeletRows)}
-                <div class="cluster-hover-card__group">穗级指标</div>
+                <div class="cluster-hover-card__group">穗级特征</div>
                 ${renderHoverMetricRows(earRows)}
             </div>
             ${imageUrl ? `<div class="cluster-hover-card__image-wrap"><img class="cluster-hover-card__image" src="${imageUrl}" alt="${sample.image_name || sample.filename}"></div>` : ''}
