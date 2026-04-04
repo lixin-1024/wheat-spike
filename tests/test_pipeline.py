@@ -5,7 +5,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from wheat_analysis.calibration import ScaleCalibrator
+from wheat_analysis.calibration import COLORCHECKER_CLASSIC_24_D65_BGR, ScaleCalibrator
 from wheat_analysis.clustering import PhenotypeClusterAnalyzer
 from wheat_analysis.phenotype import PhenotypeExtractor
 from wheat_analysis.pipeline import BatchImagePipeline, SingleImagePipeline
@@ -24,6 +24,41 @@ def make_obb_corners(center, angle_rad, long_len=30.0, short_len=10.0):
         [cx, cy] + half_long * direction + half_short * normal,
         [cx, cy] - half_long * direction + half_short * normal,
     ])
+
+
+def make_synthetic_color_card_image(width=960, height=640):
+    image = np.zeros((height, width, 3), dtype=np.uint8)
+
+    # 尺度标定白圆片
+    cv2.circle(image, (120, 130), 48, (255, 255, 255), -1)
+
+    # 构造 4x6 色卡区域（带轻微颜色偏移，模拟真实拍摄偏色）
+    card_x0, card_y0 = 220, 260
+    card_w, card_h = 540, 320
+    cv2.rectangle(image, (card_x0, card_y0), (card_x0 + card_w, card_y0 + card_h), (35, 35, 35), -1)
+
+    rows, cols = 4, 6
+    margin_x, margin_y = 34, 26
+    inner_w = card_w - 2 * margin_x
+    inner_h = card_h - 2 * margin_y
+    cell_w = inner_w / cols
+    cell_h = inner_h / rows
+
+    cast_gain = np.array([1.18, 0.92, 0.84], dtype=np.float32)  # B, G, R
+    colors = np.clip(COLORCHECKER_CLASSIC_24_D65_BGR * cast_gain, 0, 255).astype(np.uint8)
+
+    idx = 0
+    for row in range(rows):
+        for col in range(cols):
+            x0 = int(card_x0 + margin_x + col * cell_w + cell_w * 0.08)
+            y0 = int(card_y0 + margin_y + row * cell_h + cell_h * 0.08)
+            x1 = int(card_x0 + margin_x + (col + 1) * cell_w - cell_w * 0.08)
+            y1 = int(card_y0 + margin_y + (row + 1) * cell_h - cell_h * 0.08)
+            color = tuple(int(v) for v in colors[idx])
+            cv2.rectangle(image, (x0, y0), (x1, y1), color, -1)
+            idx += 1
+
+    return image
 
 
 class DummyDetector:
@@ -47,6 +82,24 @@ class TestScaleCalibrator(unittest.TestCase):
         self.assertTrue(result['calibration_ok'])
         self.assertAlmostEqual(result['disc_diameter_px'], 100.0, delta=8.0)
         self.assertAlmostEqual(result['px_per_cm'], 20.0, delta=1.6)
+
+    def test_calibrate_with_color_card(self):
+        image = make_synthetic_color_card_image()
+        calibrator = ScaleCalibrator(disc_diameter_cm=5.0, enable_color_calibration=True)
+
+        result = calibrator.calibrate(image)
+
+        self.assertTrue(result['calibration_ok'])
+        self.assertTrue(result['color_calibration_ok'])
+        self.assertIsNotNone(result['color_card_bbox'])
+        self.assertIsNotNone(result['color_matrix'])
+        self.assertIsNotNone(result['color_bias'])
+        self.assertIsNotNone(result['color_delta_e_mean'])
+        self.assertLess(result['color_delta_e_mean'], 25.0)
+
+        corrected = calibrator.apply_color_correction(image, result)
+        self.assertEqual(corrected.shape, image.shape)
+        self.assertEqual(corrected.dtype, image.dtype)
 
 
 class TestPhenotypeExtractor(unittest.TestCase):
@@ -108,6 +161,11 @@ class TestPhenotypeExtractor(unittest.TestCase):
             'spikelet_density_per_cm',
             'mean_spikelet_length_mm',
             'mean_spikelet_width_mm',
+            'mean_color_l',
+            'mean_color_a',
+            'mean_color_b',
+            'color_std_l',
+            'left_right_color_delta_e',
         }
         self.assertEqual(set(ear.keys()), expected_keys)
 

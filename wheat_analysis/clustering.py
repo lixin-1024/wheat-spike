@@ -55,6 +55,7 @@ class PhenotypeClusterAnalyzer:
         self._save_labels_csv(output_path / "clustering_results.csv", image_names, labels, embedding)
         self._save_centers_csv(output_path / "cluster_centers.csv", feature_names, cluster_centers)
         self._save_embedding_plot(output_path / "cluster_embedding.png", image_names, labels, embedding)
+        self._save_similarity_heatmap(output_path / "sample_similarity_heatmap.png", image_names, feature_matrix)
         self._save_dendrogram(output_path / "cluster_dendrogram.png", image_names, linkage_matrix)
 
         return {
@@ -76,6 +77,7 @@ class PhenotypeClusterAnalyzer:
                 "labels_csv": str(output_path / "clustering_results.csv"),
                 "centers_csv": str(output_path / "cluster_centers.csv"),
                 "embedding_plot": str(output_path / "cluster_embedding.png"),
+                "similarity_heatmap": str(output_path / "sample_similarity_heatmap.png"),
                 "dendrogram_plot": str(output_path / "cluster_dendrogram.png"),
             },
         }
@@ -194,6 +196,11 @@ class PhenotypeClusterAnalyzer:
             "mean_attachment_angle": "mean_attachment_angle",
             "asymmetry_index": "mean_asymmetry_index",
             "centroid_offset": "mean_centroid_offset",
+            "mean_color_l": "mean_color_l",
+            "mean_color_a": "mean_color_a",
+            "mean_color_b": "mean_color_b",
+            "color_std_l": "color_std_l",
+            "left_right_color_delta_e": "left_right_color_delta_e",
         }
         for source, alias in aliases.items():
             if source in means:
@@ -330,6 +337,30 @@ class PhenotypeClusterAnalyzer:
         plt.setp(plt.getp(cbar.ax.axes, "yticklabels"), color="#dff7ff")
         plt.tight_layout()
         plt.savefig(image_path, dpi=220, facecolor="#08111f")
+        plt.close()
+
+    def _save_similarity_heatmap(self, image_path: Path, image_names, feature_matrix: np.ndarray):
+        if feature_matrix is None or len(feature_matrix) == 0:
+            return
+
+        condensed = pdist(np.asarray(feature_matrix, dtype=float), metric="euclidean")
+        sample_count = len(image_names)
+        dist = np.zeros((sample_count, sample_count), dtype=float)
+        upper_indices = np.triu_indices(sample_count, 1)
+        dist[upper_indices] = condensed
+        dist[(upper_indices[1], upper_indices[0])] = condensed
+
+        plt.figure(figsize=(8.2, 7.0), facecolor="white")
+        ax = plt.gca()
+        im = ax.imshow(dist, cmap="magma")
+        ax.set_title("Sample Similarity (Euclidean Distance)")
+        ax.set_xticks(range(sample_count))
+        ax.set_xticklabels(image_names, rotation=45, ha="right", fontsize=8)
+        ax.set_yticks(range(sample_count))
+        ax.set_yticklabels(image_names, fontsize=8)
+        plt.colorbar(im, fraction=0.046, pad=0.04)
+        plt.tight_layout()
+        plt.savefig(image_path, dpi=220)
         plt.close()
 
     def _save_dendrogram(self, image_path: Path, image_names, linkage_matrix):

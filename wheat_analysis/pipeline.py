@@ -97,13 +97,28 @@ class SingleImagePipeline(_BasePipeline):
         image = cv2.imread(str(image_path))
         calibration = self.calibrator.calibrate(image) if image is not None else {
             'calibration_ok': False,
+            'scale_calibration_ok': False,
             'px_per_cm': None,
             'mm_per_px': None,
             'disc_center': None,
             'disc_radius_px': None,
             'disc_diameter_px': None,
+            'color_calibration_ok': False,
+            'color_card_reference': None,
             'color_card_bbox': None,
+            'color_card_quad': None,
+            'color_card_confidence': None,
+            'color_matrix': None,
+            'color_bias': None,
+            'color_patch_means_bgr': None,
+            'color_patch_corrected_bgr': None,
+            'color_reference_bgr': None,
+            'color_delta_e_mean': None,
+            'color_delta_e_max': None,
+            'color_quality_score': None,
+            'color_error': None,
         }
+        analysis_image = self.calibrator.apply_color_correction(image, calibration) if image is not None else None
 
         detection = self.detector.detect(image_path)
         if detection['count'] < 2:
@@ -112,11 +127,21 @@ class SingleImagePipeline(_BasePipeline):
         skeleton = self.skeleton_builder.build(detection)
         spikelet_pheno = self.phenotype_extractor.extract_spikelet_phenotypes(detection, skeleton, calibration)
         spikelet_records = self.phenotype_extractor.build_spikelet_records(detection, skeleton, spikelet_pheno)
-        ear_pheno = self.phenotype_extractor.extract_ear_phenotypes(detection, skeleton, spikelet_pheno, calibration)
+        ear_pheno = self.phenotype_extractor.extract_ear_phenotypes(
+            detection,
+            skeleton,
+            spikelet_pheno,
+            calibration,
+            image=analysis_image,
+        )
         feature_names, feature_vector = self.phenotype_extractor.build_feature_vector(ear_pheno)
 
         vis_image = self.visualizer.draw_full_analysis(
-            image, detection, skeleton, spikelet_pheno, ear_pheno
+            analysis_image if analysis_image is not None else image,
+            detection,
+            skeleton,
+            spikelet_pheno,
+            ear_pheno,
         ) if image is not None else None
 
         if output_dir:
@@ -253,6 +278,11 @@ class BatchImagePipeline(_BasePipeline):
             'spikelet_density_per_cm': self._safe_float(ear['spikelet_density_per_cm']),
             'asymmetry_index': self._safe_float(ear['asymmetry_index']),
             'centroid_offset': self._safe_float(ear['centroid_offset']),
+            'mean_color_l': self._safe_float(ear['mean_color_l']),
+            'mean_color_a': self._safe_float(ear['mean_color_a']),
+            'mean_color_b': self._safe_float(ear['mean_color_b']),
+            'color_std_l': self._safe_float(ear['color_std_l']),
+            'left_right_color_delta_e': self._safe_float(ear['left_right_color_delta_e']),
         }
 
     def _build_feature_row(self, image_name: str, feature_names: list[str], feature_vector: np.ndarray) -> dict:

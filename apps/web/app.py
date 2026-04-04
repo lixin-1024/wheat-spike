@@ -180,6 +180,14 @@ def enrich_cluster_result(cluster_result: dict | None, serialized_results: list[
         source.setdefault("mean_attachment_angle", pick("mean_attachment_angle"))
         source.setdefault("mean_asymmetry_index", pick("mean_asymmetry_index", "asymmetry_index"))
         source.setdefault("mean_centroid_offset", pick("mean_centroid_offset", "centroid_offset"))
+        source.setdefault("mean_color_l", pick("mean_color_l", "color_l"))
+        source.setdefault("mean_color_a", pick("mean_color_a", "color_a"))
+        source.setdefault("mean_color_b", pick("mean_color_b", "color_b"))
+        source.setdefault("color_std_l", pick("color_std_l", "mean_color_std_l"))
+        source.setdefault(
+            "left_right_color_delta_e",
+            pick("left_right_color_delta_e", "mean_left_right_color_delta_e"),
+        )
         return source
 
     result_map = {item.get("image_name") or item.get("filename"): item for item in serialized_results}
@@ -344,6 +352,11 @@ def build_cluster_export_csv(payload: dict, cluster_id: int) -> str | None:
         "mean_attachment_angle",
         "asymmetry_index",
         "centroid_offset",
+        "mean_color_l",
+        "mean_color_a",
+        "mean_color_b",
+        "color_std_l",
+        "left_right_color_delta_e",
     ]
     writer.writerow(["image", *feature_keys])
     for sample in target.get("samples", []):

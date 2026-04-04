@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import cv2
 import numpy as np
 
 
@@ -58,6 +59,7 @@ class PhenotypeExtractor:
         skeleton: dict,
         spikelet_pheno: dict,
         calibration: dict | None = None,
+        image: np.ndarray | None = None,
     ) -> dict:
         """
         提取穗级表型。
@@ -95,6 +97,11 @@ class PhenotypeExtractor:
             'spikelet_density_per_cm': None,
             'mean_spikelet_length_mm': None,
             'mean_spikelet_width_mm': None,
+            'mean_color_l': None,
+            'mean_color_a': None,
+            'mean_color_b': None,
+            'color_std_l': None,
+            'left_right_color_delta_e': None,
         }
 
         if calibration and calibration.get('calibration_ok'):
@@ -109,6 +116,10 @@ class PhenotypeExtractor:
                 'mean_spikelet_length_mm': result['mean_spikelet_length'] * mm_per_px,
                 'mean_spikelet_width_mm': result['mean_spikelet_width'] * mm_per_px,
             })
+
+        color_metrics = self._extract_color_metrics(image, detection, skeleton)
+        if color_metrics is not None:
+            result.update(color_metrics)
 
         return result
 
@@ -144,6 +155,15 @@ class PhenotypeExtractor:
             ),
             'asymmetry_index': float(ear_pheno['asymmetry_index']),
             'centroid_offset': float(ear_pheno['centroid_offset']),
+            'mean_color_l': float(ear_pheno.get('mean_color_l') if ear_pheno.get('mean_color_l') is not None else 0.0),
+            'mean_color_a': float(ear_pheno.get('mean_color_a') if ear_pheno.get('mean_color_a') is not None else 0.0),
+            'mean_color_b': float(ear_pheno.get('mean_color_b') if ear_pheno.get('mean_color_b') is not None else 0.0),
+            'color_std_l': float(ear_pheno.get('color_std_l') if ear_pheno.get('color_std_l') is not None else 0.0),
+            'left_right_color_delta_e': float(
+                ear_pheno.get('left_right_color_delta_e')
+                if ear_pheno.get('left_right_color_delta_e') is not None
+                else 0.0
+            ),
         }
         return list(feature_map.keys()), np.asarray(list(feature_map.values()), dtype=float)
 
@@ -197,3 +217,53 @@ class PhenotypeExtractor:
             normalized_gaps.append(abs(left_mean - right_mean) / overall_mean if overall_mean > 1e-8 else 0.0)
 
         return float(np.mean(normalized_gaps)) if normalized_gaps else 0.0
+
+    def _extract_color_metrics(self, image: np.ndarray | None, detection: dict, skeleton: dict) -> dict | None:
+        """
+        从小穗 OBB 区域提取颜色统计（Lab）。
+        """
+        if image is None or image.size == 0:
+            return None
+        if detection.get('xyxyxyxy') is None:
+            return None
+
+        polygons = np.asarray(detection['xyxyxyxy'], dtype=float)
+        if len(polygons) == 0:
+            return None
+
+        lab_image = cv2.cvtColor(image, cv2.COLOR_BGR2LAB).astype(np.float32)
+        side = np.asarray(skeleton.get('spikelet_side', np.zeros(len(polygons), dtype=float)), dtype=float)
+
+        patch_means = []
+        patch_sides = []
+        for index, polygon in enumerate(polygons):
+            mask = np.zeros(image.shape[:2], dtype=np.uint8)
+            cv2.fillPoly(mask, [polygon.astype(np.int32)], 255)
+            values = lab_image[mask > 0]
+            if values.size == 0:
+                continue
+            patch_means.append(values.mean(axis=0))
+            patch_sides.append(side[index] if index < len(side) else 0.0)
+
+        if not patch_means:
+            return None
+
+        patch_means_arr = np.asarray(patch_means, dtype=np.float32)
+        patch_sides_arr = np.asarray(patch_sides, dtype=np.float32)
+
+        left_mask = patch_sides_arr < 0
+        right_mask = patch_sides_arr > 0
+
+        left_right_delta_e = 0.0
+        if np.any(left_mask) and np.any(right_mask):
+            left_mean = patch_means_arr[left_mask].mean(axis=0)
+            right_mean = patch_means_arr[right_mask].mean(axis=0)
+            left_right_delta_e = float(np.linalg.norm(left_mean - right_mean))
+
+        return {
+            'mean_color_l': float(patch_means_arr[:, 0].mean()),
+            'mean_color_a': float(patch_means_arr[:, 1].mean()),
+            'mean_color_b': float(patch_means_arr[:, 2].mean()),
+            'color_std_l': float(patch_means_arr[:, 0].std()),
+            'left_right_color_delta_e': left_right_delta_e,
+        }

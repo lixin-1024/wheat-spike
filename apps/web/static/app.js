@@ -912,6 +912,7 @@ function hideTooltip() {
 
 function renderSingleMetrics(result) {
     const ear = result.ear_pheno;
+    const calibration = result.calibration || {};
     const metrics = [
         ['平均长度', formatMetric(ear.mean_spikelet_length_mm, 'mm', ear.mean_spikelet_length, 'px')],
         ['平均宽度', formatMetric(ear.mean_spikelet_width_mm, 'mm', ear.mean_spikelet_width, 'px')],
@@ -923,6 +924,37 @@ function renderSingleMetrics(result) {
         ['对称度指数', ear.asymmetry_index.toFixed(4)],
         ['重心偏移度', ear.centroid_offset.toFixed(4)],
     ];
+
+    if (Number.isFinite(Number(ear.mean_color_l))) {
+        metrics.push(['平均亮度 L*', Number(ear.mean_color_l).toFixed(2)]);
+    }
+    if (Number.isFinite(Number(ear.mean_color_a))) {
+        metrics.push(['平均色轴 a*', Number(ear.mean_color_a).toFixed(2)]);
+    }
+    if (Number.isFinite(Number(ear.mean_color_b))) {
+        metrics.push(['平均色轴 b*', Number(ear.mean_color_b).toFixed(2)]);
+    }
+    if (Number.isFinite(Number(ear.color_std_l))) {
+        metrics.push(['亮度离散度', Number(ear.color_std_l).toFixed(2)]);
+    }
+    if (Number.isFinite(Number(ear.left_right_color_delta_e))) {
+        metrics.push(['左右色差 ΔE', Number(ear.left_right_color_delta_e).toFixed(2)]);
+    }
+
+    metrics.push(['色卡标定', calibration.color_calibration_ok ? '已启用' : '未启用']);
+    if (calibration.color_calibration_ok) {
+        if (Number.isFinite(Number(calibration.color_delta_e_mean))) {
+            metrics.push(['色卡ΔE均值', Number(calibration.color_delta_e_mean).toFixed(2)]);
+        }
+        if (Number.isFinite(Number(calibration.color_quality_score))) {
+            metrics.push(['色卡质量分', Number(calibration.color_quality_score).toFixed(3)]);
+        }
+        if (Number.isFinite(Number(calibration.color_card_confidence))) {
+            metrics.push(['色卡置信度', Number(calibration.color_card_confidence).toFixed(3)]);
+        }
+    } else if (calibration.color_error) {
+        metrics.push(['色彩标定状态', calibration.color_error]);
+    }
 
     refs.singleMetrics.innerHTML = metrics.map(([label, value]) => `
         <div class="metric-card">
@@ -1380,7 +1412,17 @@ function renderClusterCompare(cluster) {
         { key: 'mean_asymmetry_index', label: '对称度', unit: '', group: '穗级特征', groupClass: 'ear' },
         { key: 'mean_centroid_offset', label: '重心偏移度', unit: '', group: '穗级特征', groupClass: 'ear' },
     ];
-    const metrics = [...spikeletMetrics, ...earMetrics];
+    const colorMetrics = [
+        { key: 'mean_color_l', label: '平均亮度 L*', unit: '', group: '颜色特征', groupClass: 'ear' },
+        { key: 'mean_color_a', label: '平均色轴 a*', unit: '', group: '颜色特征', groupClass: 'ear' },
+        { key: 'mean_color_b', label: '平均色轴 b*', unit: '', group: '颜色特征', groupClass: 'ear' },
+        { key: 'color_std_l', label: '亮度离散度', unit: '', group: '颜色特征', groupClass: 'ear' },
+        { key: 'left_right_color_delta_e', label: '左右色差 ΔE', unit: '', group: '颜色特征', groupClass: 'ear' },
+    ];
+    const availableColorMetrics = colorMetrics.filter(metric =>
+        selected.some(item => Number.isFinite(Number(item.aggregate_metrics?.[metric.key])))
+    );
+    const metrics = [...spikeletMetrics, ...earMetrics, ...availableColorMetrics];
 
     refs.clusterCompareChart.innerHTML = `
         <div class="compare-radar-grid">
@@ -1392,6 +1434,12 @@ function renderClusterCompare(cluster) {
                 <div class="compare-radar__title">雷达图 • 穗级特征</div>
                 ${renderClusterRadar(selected, earMetrics)}
             </div>
+            ${availableColorMetrics.length ? `
+                <div class="compare-radar-shell">
+                    <div class="compare-radar__title">雷达图 • 颜色特征</div>
+                    ${renderClusterRadar(selected, availableColorMetrics)}
+                </div>
+            ` : ''}
         </div>
         <div class="compare-bars-shell">
             <div class="compare-bars-shell__title">柱状图</div>
@@ -1780,6 +1828,11 @@ function getClusterMetricOptions(cluster) {
         { key: 'spikelet_density', label: '着生密度', group: 'ear', groupLabel: '穗级特征' },
         { key: 'mean_asymmetry_index', label: '对称度', group: 'ear', groupLabel: '穗级特征' },
         { key: 'mean_centroid_offset', label: '重心偏移度', group: 'ear', groupLabel: '穗级特征' },
+        { key: 'mean_color_l', label: '平均亮度 L*', group: 'color', groupLabel: '颜色特征' },
+        { key: 'mean_color_a', label: '平均色轴 a*', group: 'color', groupLabel: '颜色特征' },
+        { key: 'mean_color_b', label: '平均色轴 b*', group: 'color', groupLabel: '颜色特征' },
+        { key: 'color_std_l', label: '亮度离散度', group: 'color', groupLabel: '颜色特征' },
+        { key: 'left_right_color_delta_e', label: '左右色差 ΔE', group: 'color', groupLabel: '颜色特征' },
     ];
     const availableMetrics = cluster?.clusters?.[0]?.aggregate_metrics || {};
     return preferredMetrics.filter(metric => Object.prototype.hasOwnProperty.call(availableMetrics, metric.key));
@@ -1889,6 +1942,11 @@ function getMetricLabel(key) {
         mean_spikelet_width_mm: '平均小穗宽度',
         mean_asymmetry_index: '平均对称度',
         mean_centroid_offset: '平均重心偏移度',
+        mean_color_l: '平均亮度 L*',
+        mean_color_a: '平均色轴 a*',
+        mean_color_b: '平均色轴 b*',
+        color_std_l: '亮度离散度',
+        left_right_color_delta_e: '左右色差 ΔE',
     };
     return labelMap[key] || null;
 }

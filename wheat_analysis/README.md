@@ -138,6 +138,25 @@ $$
 | 圆度 | $\text{circularity}>0.65$ |
 | 最小半径 | $r>10$ px |
 
+### 4.2.5 当前实现输出（已落地）
+
+当前版本在尺度标定之外，已实现基于 ColorChecker Classic 24（D65）的色彩标定，核心输出字段如下：
+
+| 字段 | 含义 |
+|---|---|
+| `color_calibration_ok` | 色彩标定是否成功 |
+| `color_card_bbox` | 色卡轴对齐包围框 `[x1,y1,x2,y2]` |
+| `color_card_quad` | 色卡四角点（透视前） |
+| `color_card_confidence` | 色卡检测置信分 |
+| `color_matrix` | 颜色 3x3 线性变换矩阵 |
+| `color_bias` | 颜色偏置向量 |
+| `color_delta_e_mean` | 校正后平均色差（CIE76） |
+| `color_delta_e_max` | 校正后最大色差（CIE76） |
+| `color_quality_score` | 色彩标定质量分（0-1） |
+| `color_error` | 失败原因（若失败） |
+
+同时模块提供 `apply_color_correction(image, calibration)` 接口，在标定成功时对输入图像执行颜色校正；失败时自动回退为原图。
+
 ## 4.3 骨架构建模块（SkeletonBuilder）
 
 实现文件：[wheat_analysis/skeleton.py](skeleton.py)
