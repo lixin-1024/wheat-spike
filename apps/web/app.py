@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import os
 import threading
+import time
 import uuid
 from io import StringIO
 from pathlib import Path
@@ -34,6 +35,29 @@ batch_pipeline = BatchImagePipeline(model_path=MODEL_PATH, imgsz=1440, conf=0.5)
 
 batch_jobs: dict[str, dict] = {}
 batch_jobs_lock = threading.Lock()
+JOB_TTL_SECONDS = int(os.getenv("BATCH_JOB_TTL_SECONDS", "7200"))
+
+
+def now_ts() -> float:
+    return time.time()
+
+
+def is_job_expired(job: dict) -> bool:
+    if job.get("state") not in {"completed", "error"}:
+        return False
+    updated_at = float(job.get("updated_at") or now_ts())
+    return (now_ts() - updated_at) > JOB_TTL_SECONDS
+
+
+def cleanup_expired_jobs():
+    with batch_jobs_lock:
+        expired = [run_id for run_id, job in batch_jobs.items() if is_job_expired(job)]
+        for run_id in expired:
+            batch_jobs.pop(run_id, None)
+
+
+def error_payload(message: str, code: str):
+    return {"error": message, "code": code}
 
 
 def allowed_file(filename: str) -> bool:
@@ -224,6 +248,7 @@ def serialize_job_status(job: dict):
         "current_file": job.get("current_file"),
         "error": job.get("error"),
         "percent": 100 if not job.get("total") and job["state"] == "completed" else round(current / total * 100, 1),
+        "updated_at": job.get("updated_at"),
     }
 
 
@@ -231,6 +256,7 @@ def update_job(run_id: str, **updates):
     with batch_jobs_lock:
         if run_id not in batch_jobs:
             return
+        updates["updated_at"] = now_ts()
         batch_jobs[run_id].update(updates)
 
 
@@ -371,6 +397,7 @@ def analyze_single_api():
 
 @app.route("/api/analyze-batch", methods=["POST"])
 def analyze_batch_api():
+    cleanup_expired_jobs()
     files = request.files.getlist("files")
     if not files or files[0].filename == "":
         return jsonify({"error": "请选择图片文件"}), 400
@@ -394,6 +421,7 @@ def analyze_batch_api():
         return jsonify({"error": "未检测到可用图片"}), 400
 
     with batch_jobs_lock:
+        now = now_ts()
         batch_jobs[run_id] = {
             "run_id": run_id,
             "state": "queued",
@@ -403,6 +431,8 @@ def analyze_batch_api():
             "current_file": None,
             "payload": None,
             "error": None,
+            "created_at": now,
+            "updated_at": now,
         }
 
     worker = threading.Thread(target=run_batch_job, args=(run_id, image_paths), daemon=True)
@@ -415,7 +445,11 @@ def batch_status_api(run_id: str):
     with batch_jobs_lock:
         job = batch_jobs.get(run_id)
     if not job:
-        return jsonify({"error": "任务不存在"}), 404
+        return jsonify(error_payload("任务不存在，请重新上传并发起分析。", "job_not_found")), 404
+    if is_job_expired(job):
+        with batch_jobs_lock:
+            batch_jobs.pop(run_id, None)
+        return jsonify(error_payload("任务结果已过期，请重新上传并发起分析。", "job_expired")), 410
     return jsonify(serialize_job_status(job))
 
 
@@ -424,11 +458,15 @@ def batch_result_api(run_id: str):
     with batch_jobs_lock:
         job = batch_jobs.get(run_id)
     if not job:
-        return jsonify({"error": "任务不存在"}), 404
+        return jsonify(error_payload("任务不存在，请重新上传并发起分析。", "job_not_found")), 404
+    if is_job_expired(job):
+        with batch_jobs_lock:
+            batch_jobs.pop(run_id, None)
+        return jsonify(error_payload("任务结果已过期，请重新上传并发起分析。", "job_expired")), 410
     if job["state"] == "error":
-        return jsonify({"error": job.get("error") or "批量分析失败"}), 500
+        return jsonify(error_payload(job.get("error") or "批量分析失败", "job_failed")), 500
     if job["state"] != "completed" or not job.get("payload"):
-        return jsonify({"error": "任务尚未完成"}), 409
+        return jsonify(error_payload("任务尚未完成", "job_not_completed")), 409
     return jsonify(job["payload"])
 
 

@@ -34,16 +34,22 @@ const state = {
     skeletonFxTargets: [],
     skeletonFxAnimationFrame: null,
     clusterMetricOptions: [],
+    batchStatusSignature: null,
+    batchRenderToken: 0,
+    clusterLabelMap: {},
+    clusterResultMap: {},
 };
 
 const refs = {};
 let panelTransitionToken = 0;
+const BATCH_SESSION_KEY = 'wheat.batch.session.v1';
 
 document.addEventListener('DOMContentLoaded', () => {
     bindRefs();
     bindEvents();
     renderMode({ instant: true });
     renderFiles();
+    void restoreBatchSession();
 });
 
 function bindRefs() {
@@ -242,6 +248,21 @@ function bindEvents() {
         state.batchHideUnmatched = refs.clusterHideUnmatched.checked;
         renderBatch(state.batchResult);
     });
+
+    refs.clusterCards.addEventListener('mouseover', handleClusterCardMouseOver);
+    refs.clusterCards.addEventListener('mouseout', handleClusterCardMouseOut);
+    refs.clusterCards.addEventListener('click', handleClusterCardClick);
+
+    refs.clusterMap.addEventListener('mouseover', handleClusterMapMouseOver);
+    refs.clusterMap.addEventListener('mousemove', handleClusterMapMouseMove);
+    refs.clusterMap.addEventListener('mouseout', handleClusterMapMouseOut);
+    refs.clusterMap.addEventListener('click', handleClusterMapClick);
+
+    refs.clusterDendrogram.addEventListener('mouseover', handleDendrogramMouseOver);
+    refs.clusterDendrogram.addEventListener('mousemove', handleDendrogramMouseMove);
+    refs.clusterDendrogram.addEventListener('mouseout', handleDendrogramMouseOut);
+
+    refs.clusterCompareSummary.addEventListener('click', handleCompareSummaryClick);
 }
 
 function renderMode(options = {}) {
@@ -379,7 +400,11 @@ function resetPanels() {
     state.hoveredClusterId = null;
     state.selectedClusterId = null;
     state.hoveredDendrogramNodeId = null;
+    state.batchStatusSignature = null;
+    state.clusterLabelMap = {};
+    state.clusterResultMap = {};
     stopBatchPolling();
+    clearBatchSession();
     refs.viewerImage.removeAttribute('src');
     refs.viewerImage.classList.add('hidden');
     state.fitScale = null;
@@ -430,6 +455,7 @@ async function runAnalysis() {
             updateBatchProgress({ stage: 'queued', current: 0, total: state.files.length, percent: 0 });
             startBatchPolling(payload.run_id);
             setStatus('批量任务已启动，正在分析中...', 'running');
+            saveBatchSession({ state: 'queued' });
         }
     } catch (error) {
         setStatus(`分析失败：${error.message}`, 'error');
@@ -441,12 +467,23 @@ async function runAnalysis() {
 
 function startBatchPolling(runId) {
     stopBatchPolling();
+    state.batchRunId = runId;
+    saveBatchSession({ state: 'running' });
+    let inFlight = false;
+
     const poll = async () => {
+        if (inFlight) {
+            return;
+        }
+        inFlight = true;
         try {
             const response = await fetch(`/api/batch-status/${runId}`);
             const status = await response.json();
             if (!response.ok || status.error) {
                 throw new Error(status.error || '批量状态获取失败');
+            }
+            if (state.batchRunId !== runId) {
+                return;
             }
             updateBatchProgress(status);
             if (status.state === 'completed') {
@@ -464,6 +501,9 @@ function startBatchPolling(runId) {
             state.batchProgress = null;
             setStatus(`批量分析失败：${error.message}`, 'error');
             renderStatusCard();
+            saveBatchSession({ state: 'error' });
+        } finally {
+            inFlight = false;
         }
     };
 
@@ -483,16 +523,21 @@ async function fetchBatchResult(runId) {
     const response = await fetch(`/api/batch-result/${runId}`);
     const payload = await response.json();
     if (!response.ok || payload.error) {
+        if (payload?.code === 'job_expired' || payload?.code === 'job_not_found') {
+            clearBatchSession();
+        }
         throw new Error(payload.error || '批量结果获取失败');
     }
     state.batchRunId = payload.run_id || runId;
     state.batchResult = payload;
     state.isAnalyzing = false;
     state.batchProgress = null;
+    state.batchStatusSignature = null;
     initializeBatchControls(payload.cluster);
     renderBatch(payload);
     setStatus('批量分析完成', 'success');
     renderStatusCard();
+    saveBatchSession({ state: 'completed' });
 }
 
 function updateBatchProgress(status) {
@@ -503,13 +548,20 @@ function updateBatchProgress(status) {
         completed: '批量分析与聚类完成',
         error: '批量分析失败',
     };
-    state.batchProgress = {
+    const nextProgress = {
         label: stageMap[status.stage] || '批量任务处理中',
         percent: Math.max(0, Math.min(status.percent || 0, 100)),
         current: status.current || 0,
         total: status.total || 0,
     };
+    const signature = [status.state || '', status.stage || '', nextProgress.current, nextProgress.total, Math.round(nextProgress.percent || 0)].join('|');
+    if (signature === state.batchStatusSignature) {
+        return;
+    }
+    state.batchStatusSignature = signature;
+    state.batchProgress = nextProgress;
     renderStatusCard();
+    saveBatchSession({ state: status.state || 'running' });
 }
 
 function initializeBatchControls(cluster) {
@@ -1133,12 +1185,24 @@ function renderBatch(payload) {
         return;
     }
 
+    const token = ++state.batchRenderToken;
     refs.clusterScore.textContent = `Silhouette: ${cluster.silhouette_score ? cluster.silhouette_score.toFixed(3) : 'N/A'}`;
-    renderClusterMap(results, cluster);
-    renderDendrogram(cluster);
     renderClusterCards(cluster);
-    renderClusterCompare(cluster);
-    syncBatchDetail(cluster, results);
+
+    window.requestAnimationFrame(() => {
+        if (token !== state.batchRenderToken) {
+            return;
+        }
+        renderClusterMap(results, cluster);
+        window.requestAnimationFrame(() => {
+            if (token !== state.batchRenderToken) {
+                return;
+            }
+            renderDendrogram(cluster);
+            renderClusterCompare(cluster);
+            syncBatchDetail(cluster, results);
+        });
+    });
 }
 
 function renderClusterCards(cluster) {
@@ -1179,34 +1243,6 @@ function renderClusterCards(cluster) {
         `;
     }).join('');
 
-    refs.clusterCards.querySelectorAll('.cluster-card').forEach(card => {
-        const clusterId = Number.parseInt(card.dataset.clusterId, 10);
-        card.addEventListener('mouseenter', () => {
-            state.hoveredClusterId = clusterId;
-            hideClusterHoverCard();
-            refreshDendrogramHighlight(cluster?.dendrogram);
-        });
-        card.addEventListener('mouseleave', () => {
-            state.hoveredClusterId = null;
-            hideClusterHoverCard();
-            refreshDendrogramHighlight(cluster?.dendrogram);
-        });
-        card.addEventListener('click', () => openClusterModal(clusterId));
-    });
-
-    refs.clusterCards.querySelectorAll('.cluster-card__action').forEach(button => {
-        button.addEventListener('click', (event) => {
-            event.stopPropagation();
-            const clusterId = Number.parseInt(button.dataset.clusterId, 10);
-            if (button.dataset.action === 'compare') {
-                toggleClusterComparison(clusterId);
-                return;
-            }
-            if (button.dataset.action === 'export') {
-                exportCluster(clusterId);
-            }
-        });
-    });
 }
 
 function renderClusterMap(results, cluster) {
@@ -1225,6 +1261,8 @@ function renderClusterMap(results, cluster) {
 
     const labelMap = buildLabelMap(cluster);
     const resultMap = buildResultMap(results);
+    state.clusterLabelMap = labelMap;
+    state.clusterResultMap = resultMap;
     refs.clusterMap.innerHTML = `
         <svg class="cluster-svg" viewBox="0 0 ${width} ${height}">
             ${points.map((point, index) => `
@@ -1236,35 +1274,6 @@ function renderClusterMap(results, cluster) {
         </svg>
     `;
 
-    refs.clusterMap.querySelectorAll('.cluster-point').forEach(point => {
-        const filename = point.dataset.filename;
-        point.addEventListener('mouseenter', () => {
-            state.hoveredSampleName = filename;
-            refreshDendrogramHighlight(cluster?.dendrogram);
-        });
-        point.addEventListener('mousemove', (event) => {
-            showClusterHoverCardForSample(event, resultMap[filename], labelMap[filename]);
-        });
-        point.addEventListener('mouseleave', () => {
-            state.hoveredSampleName = null;
-            hideClusterHoverCard();
-            refreshDendrogramHighlight(cluster?.dendrogram);
-        });
-        point.addEventListener('click', () => {
-            // Clear hover state before rerender to avoid stale highlight after DOM rebuild.
-            state.hoveredSampleName = null;
-            hideClusterHoverCard();
-            const nextClusterId = labelMap[filename];
-            if (state.selectedSampleName === filename) {
-                state.selectedSampleName = null;
-                state.selectedClusterId = null;
-            } else {
-                state.selectedSampleName = filename;
-                state.selectedClusterId = nextClusterId;
-            }
-            renderBatch(state.batchResult);
-        });
-    });
 }
 
 function renderDendrogram(cluster) {
@@ -1299,22 +1308,6 @@ function renderDendrogram(cluster) {
             `).join('')}
         </svg>
     `;
-
-    refs.clusterDendrogram.querySelectorAll('.dendrogram-node').forEach(nodeElement => {
-        const nodeId = Number.parseInt(nodeElement.dataset.nodeId, 10);
-        nodeElement.addEventListener('mouseenter', () => {
-            state.hoveredDendrogramNodeId = nodeId;
-            refreshDendrogramHighlight(data);
-        });
-        nodeElement.addEventListener('mousemove', (event) => {
-            showClusterHoverCardForDendrogramNode(event, cluster, nodeId);
-        });
-        nodeElement.addEventListener('mouseleave', () => {
-            state.hoveredDendrogramNodeId = null;
-            hideClusterHoverCard();
-            refreshDendrogramHighlight(data);
-        });
-    });
 
     refreshDendrogramHighlight(data);
 }
@@ -1367,20 +1360,6 @@ function renderClusterCompare(cluster) {
             `).join('')}
         </div>
     `;
-
-    refs.clusterCompareSummary.querySelectorAll('.cluster-compare__pill').forEach(pill => {
-        pill.addEventListener('click', () => {
-            const clusterId = Number.parseInt(pill.dataset.clusterId, 10);
-            toggleClusterComparison(clusterId);
-        });
-    });
-    const clearBtn = document.getElementById('clearCompareBtn');
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            state.comparisonClusterIds = [];
-            renderBatch(state.batchResult);
-        });
-    }
 
     if (selected.length < 2) {
         refs.clusterCompareChart.innerHTML = '<div class="compare-empty">至少选择 2 个类簇后展示多类对比图表。</div>';
@@ -1446,6 +1425,265 @@ function renderClusterCompare(cluster) {
     `;
 
     refs.clusterCompareGallery.innerHTML = '';
+}
+
+function saveBatchSession(extra = {}) {
+    if (state.mode !== 'batch' || !state.batchRunId) {
+        return;
+    }
+    const snapshot = {
+        mode: 'batch',
+        runId: state.batchRunId,
+        state: extra.state || 'running',
+        progress: state.batchProgress,
+        batchSortMetric: state.batchSortMetric,
+        batchFilterMetric: state.batchFilterMetric,
+        batchFilterValue: state.batchFilterValue,
+        batchHideUnmatched: state.batchHideUnmatched,
+        savedAt: Date.now(),
+    };
+    try {
+        window.sessionStorage.setItem(BATCH_SESSION_KEY, JSON.stringify(snapshot));
+    } catch (error) {
+        void error;
+    }
+}
+
+function clearBatchSession() {
+    try {
+        window.sessionStorage.removeItem(BATCH_SESSION_KEY);
+    } catch (error) {
+        void error;
+    }
+}
+
+function loadBatchSession() {
+    try {
+        const raw = window.sessionStorage.getItem(BATCH_SESSION_KEY);
+        if (!raw) {
+            return null;
+        }
+        return JSON.parse(raw);
+    } catch (error) {
+        void error;
+        return null;
+    }
+}
+
+async function restoreBatchSession() {
+    const snapshot = loadBatchSession();
+    if (!snapshot?.runId) {
+        return;
+    }
+
+    if (snapshot.mode === 'batch' && state.mode !== 'batch') {
+        state.mode = 'batch';
+        renderMode({ instant: true });
+        renderFiles();
+    }
+
+    state.batchRunId = snapshot.runId;
+    state.batchSortMetric = snapshot.batchSortMetric || state.batchSortMetric;
+    state.batchFilterMetric = snapshot.batchFilterMetric || state.batchFilterMetric;
+    state.batchFilterValue = snapshot.batchFilterValue || '';
+    state.batchHideUnmatched = Boolean(snapshot.batchHideUnmatched);
+    refs.clusterFilterValue.value = state.batchFilterValue;
+    refs.clusterHideUnmatched.checked = state.batchHideUnmatched;
+
+    setStatus('已恢复上次批量任务，正在同步状态...', 'running');
+    renderStatusCard();
+
+    try {
+        const response = await fetch(`/api/batch-status/${snapshot.runId}`);
+        const status = await response.json();
+        if (!response.ok || status.error) {
+            if (status?.code === 'job_expired' || status?.code === 'job_not_found') {
+                clearBatchSession();
+                state.batchRunId = null;
+                state.batchProgress = null;
+                setStatus('上次任务已过期或不存在，请重新上传后开始分析。', 'idle');
+                renderStatusCard();
+                return;
+            }
+            throw new Error(status.error || '任务状态不可用');
+        }
+        updateBatchProgress(status);
+        if (status.state === 'completed') {
+            await fetchBatchResult(snapshot.runId);
+            return;
+        }
+        if (status.state === 'error') {
+            setStatus(`上次批量任务失败：${status.error || '请重新上传后重试'}`, 'error');
+            renderStatusCard();
+            saveBatchSession({ state: 'error' });
+            return;
+        }
+        startBatchPolling(snapshot.runId);
+    } catch (error) {
+        clearBatchSession();
+        state.batchRunId = null;
+        state.batchProgress = null;
+        setStatus(`任务恢复失败：${error.message}`, 'error');
+        renderStatusCard();
+    }
+}
+
+function isRealPointerBoundary(target, relatedTarget) {
+    return !relatedTarget || (relatedTarget !== target && !target.contains(relatedTarget));
+}
+
+function handleClusterCardMouseOver(event) {
+    const card = event.target.closest('.cluster-card');
+    if (!card || !isRealPointerBoundary(card, event.relatedTarget)) {
+        return;
+    }
+    const clusterId = Number.parseInt(card.dataset.clusterId, 10);
+    if (!Number.isInteger(clusterId)) {
+        return;
+    }
+    state.hoveredClusterId = clusterId;
+    hideClusterHoverCard();
+    refreshDendrogramHighlight(state.batchResult?.cluster?.dendrogram);
+}
+
+function handleClusterCardMouseOut(event) {
+    const card = event.target.closest('.cluster-card');
+    if (!card || !isRealPointerBoundary(card, event.relatedTarget)) {
+        return;
+    }
+    state.hoveredClusterId = null;
+    hideClusterHoverCard();
+    refreshDendrogramHighlight(state.batchResult?.cluster?.dendrogram);
+}
+
+function handleClusterCardClick(event) {
+    const actionButton = event.target.closest('.cluster-card__action');
+    if (actionButton) {
+        event.stopPropagation();
+        const clusterId = Number.parseInt(actionButton.dataset.clusterId, 10);
+        if (!Number.isInteger(clusterId)) {
+            return;
+        }
+        if (actionButton.dataset.action === 'compare') {
+            toggleClusterComparison(clusterId);
+            return;
+        }
+        if (actionButton.dataset.action === 'export') {
+            exportCluster(clusterId);
+        }
+        return;
+    }
+
+    const card = event.target.closest('.cluster-card');
+    if (!card) {
+        return;
+    }
+    const clusterId = Number.parseInt(card.dataset.clusterId, 10);
+    if (!Number.isInteger(clusterId)) {
+        return;
+    }
+    openClusterModal(clusterId);
+}
+
+function handleClusterMapMouseOver(event) {
+    const point = event.target.closest('.cluster-point');
+    if (!point || !isRealPointerBoundary(point, event.relatedTarget)) {
+        return;
+    }
+    const filename = point.dataset.filename;
+    state.hoveredSampleName = filename;
+    refreshDendrogramHighlight(state.batchResult?.cluster?.dendrogram);
+}
+
+function handleClusterMapMouseMove(event) {
+    const point = event.target.closest('.cluster-point');
+    if (!point) {
+        return;
+    }
+    const filename = point.dataset.filename;
+    showClusterHoverCardForSample(event, state.clusterResultMap[filename], state.clusterLabelMap[filename]);
+}
+
+function handleClusterMapMouseOut(event) {
+    const point = event.target.closest('.cluster-point');
+    if (!point || !isRealPointerBoundary(point, event.relatedTarget)) {
+        return;
+    }
+    state.hoveredSampleName = null;
+    hideClusterHoverCard();
+    refreshDendrogramHighlight(state.batchResult?.cluster?.dendrogram);
+}
+
+function handleClusterMapClick(event) {
+    const point = event.target.closest('.cluster-point');
+    if (!point) {
+        return;
+    }
+    const filename = point.dataset.filename;
+    state.hoveredSampleName = null;
+    hideClusterHoverCard();
+    const nextClusterId = state.clusterLabelMap[filename];
+    if (state.selectedSampleName === filename) {
+        state.selectedSampleName = null;
+        state.selectedClusterId = null;
+    } else {
+        state.selectedSampleName = filename;
+        state.selectedClusterId = nextClusterId;
+    }
+    renderBatch(state.batchResult);
+}
+
+function handleDendrogramMouseOver(event) {
+    const node = event.target.closest('.dendrogram-node');
+    if (!node || !isRealPointerBoundary(node, event.relatedTarget)) {
+        return;
+    }
+    const nodeId = Number.parseInt(node.dataset.nodeId, 10);
+    if (!Number.isInteger(nodeId)) {
+        return;
+    }
+    state.hoveredDendrogramNodeId = nodeId;
+    refreshDendrogramHighlight(state.batchResult?.cluster?.dendrogram);
+}
+
+function handleDendrogramMouseMove(event) {
+    const node = event.target.closest('.dendrogram-node');
+    if (!node) {
+        return;
+    }
+    const nodeId = Number.parseInt(node.dataset.nodeId, 10);
+    if (!Number.isInteger(nodeId)) {
+        return;
+    }
+    showClusterHoverCardForDendrogramNode(event, state.batchResult?.cluster, nodeId);
+}
+
+function handleDendrogramMouseOut(event) {
+    const node = event.target.closest('.dendrogram-node');
+    if (!node || !isRealPointerBoundary(node, event.relatedTarget)) {
+        return;
+    }
+    state.hoveredDendrogramNodeId = null;
+    hideClusterHoverCard();
+    refreshDendrogramHighlight(state.batchResult?.cluster?.dendrogram);
+}
+
+function handleCompareSummaryClick(event) {
+    const clearButton = event.target.closest('#clearCompareBtn');
+    if (clearButton) {
+        state.comparisonClusterIds = [];
+        renderBatch(state.batchResult);
+        return;
+    }
+    const pill = event.target.closest('.cluster-compare__pill');
+    if (!pill) {
+        return;
+    }
+    const clusterId = Number.parseInt(pill.dataset.clusterId, 10);
+    if (!Number.isInteger(clusterId)) {
+        return;
+    }
+    toggleClusterComparison(clusterId);
 }
 
 function renderClusterRadar(selected, metrics) {
