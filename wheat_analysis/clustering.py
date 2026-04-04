@@ -1,12 +1,5 @@
 """
-批量表型聚类分析模块。
-
-相较于简单 KMeans + PCA，这里改为：
-1. 标准化特征
-2. PCA 预降维以抑制噪声
-3. 层次聚类（Agglomerative）
-4. 使用 t-SNE 生成二维嵌入用于可视化
-5. 额外输出样本相似度热图与树状图
+Batch phenotype clustering utilities.
 """
 from __future__ import annotations
 
@@ -14,11 +7,12 @@ import csv
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.cluster.hierarchy import dendrogram, linkage
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import pdist
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
@@ -27,7 +21,7 @@ from sklearn.preprocessing import StandardScaler
 
 
 class PhenotypeClusterAnalyzer:
-    """执行批量聚类并输出更完整的可视化结果。"""
+    """Cluster phenotype vectors and expose structured UI-ready artifacts."""
 
     def __init__(self, n_clusters: int = 3, random_state: int = 42):
         self.n_clusters = int(n_clusters)
@@ -35,14 +29,61 @@ class PhenotypeClusterAnalyzer:
 
     def cluster(self, samples: list[dict], output_dir: str) -> dict:
         if not samples:
-            raise ValueError("没有可用于聚类的样本")
+            raise ValueError("No samples available for clustering")
 
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
-        image_names = [sample['image'] for sample in samples]
-        feature_names = list(samples[0]['feature_names'])
-        feature_matrix = np.vstack([np.asarray(sample['features'], dtype=float) for sample in samples])
+        prepared = self._prepare_samples(samples)
+        feature_matrix = prepared["feature_matrix"]
+        scaled = prepared["scaled_matrix"]
+        reduced = prepared["reduced_matrix"]
+        image_names = prepared["image_names"]
+        feature_names = prepared["feature_names"]
+
+        n_clusters = max(2, min(self.n_clusters, len(samples)))
+        clustering = AgglomerativeClustering(n_clusters=n_clusters, linkage="ward")
+        labels = clustering.fit_predict(reduced)
+
+        embedding = self._build_embedding(reduced, len(samples))
+        linkage_matrix = linkage(np.asarray(reduced, dtype=float), method="ward")
+        cluster_centers = self._compute_cluster_centers(labels, feature_matrix, n_clusters)
+        silhouette = self._safe_silhouette(reduced, labels)
+        dendrogram_data = self._build_dendrogram_payload(linkage_matrix, image_names)
+        cluster_summaries = self._build_cluster_summaries(samples, labels, cluster_centers, feature_names)
+
+        self._save_labels_csv(output_path / "clustering_results.csv", image_names, labels, embedding)
+        self._save_centers_csv(output_path / "cluster_centers.csv", feature_names, cluster_centers)
+        self._save_embedding_plot(output_path / "cluster_embedding.png", image_names, labels, embedding)
+        self._save_dendrogram(output_path / "cluster_dendrogram.png", image_names, linkage_matrix)
+
+        return {
+            "method": "agglomerative_tsne",
+            "labels": labels,
+            "embedding": embedding,
+            "image_names": image_names,
+            "feature_names": feature_names,
+            "cluster_centers": cluster_centers,
+            "silhouette_score": silhouette,
+            "clusters": cluster_summaries,
+            "dendrogram": dendrogram_data,
+            "cluster_options": {
+                "current": int(n_clusters),
+                "min": 2,
+                "max": int(max(2, min(8, len(samples)))),
+            },
+            "files": {
+                "labels_csv": str(output_path / "clustering_results.csv"),
+                "centers_csv": str(output_path / "cluster_centers.csv"),
+                "embedding_plot": str(output_path / "cluster_embedding.png"),
+                "dendrogram_plot": str(output_path / "cluster_dendrogram.png"),
+            },
+        }
+
+    def _prepare_samples(self, samples: list[dict]) -> dict:
+        image_names = [sample["image"] for sample in samples]
+        feature_names = list(samples[0]["feature_names"])
+        feature_matrix = np.vstack([np.asarray(sample["features"], dtype=float) for sample in samples])
 
         scaler = StandardScaler()
         scaled = scaler.fit_transform(feature_matrix)
@@ -58,45 +99,15 @@ class PhenotypeClusterAnalyzer:
             if reduced.shape[1] == 1:
                 reduced = np.column_stack([reduced[:, 0], np.zeros(len(samples), dtype=float)])
 
-        n_clusters = max(2, min(self.n_clusters, len(samples)))
-        clustering = AgglomerativeClustering(n_clusters=n_clusters, linkage='ward')
-        labels = clustering.fit_predict(reduced)
-
-        embedding = self._build_embedding(reduced, len(samples))
-        distance_matrix = squareform(pdist(scaled, metric='euclidean'))
-        linkage_matrix = linkage(np.asarray(reduced, dtype=float), method='ward')
-        cluster_centers = self._compute_cluster_centers(labels, feature_matrix, n_clusters)
-        silhouette = self._safe_silhouette(reduced, labels)
-
-        self._save_labels_csv(output_path / "clustering_results.csv", image_names, labels, embedding)
-        self._save_centers_csv(output_path / "cluster_centers.csv", feature_names, cluster_centers)
-        self._save_embedding_plot(output_path / "cluster_embedding.png", image_names, labels, embedding)
-        self._save_heatmap(output_path / "sample_similarity_heatmap.png", image_names, distance_matrix)
-        self._save_dendrogram(output_path / "cluster_dendrogram.png", image_names, linkage_matrix)
-
         return {
-            'method': 'agglomerative_tsne',
-            'labels': labels,
-            'embedding': embedding,
-            'image_names': image_names,
-            'feature_names': feature_names,
-            'cluster_centers': cluster_centers,
-            'silhouette_score': silhouette,
-            'files': {
-                'labels_csv': str(output_path / "clustering_results.csv"),
-                'centers_csv': str(output_path / "cluster_centers.csv"),
-                'embedding_plot': str(output_path / "cluster_embedding.png"),
-                'heatmap_plot': str(output_path / "sample_similarity_heatmap.png"),
-                'dendrogram_plot': str(output_path / "cluster_dendrogram.png"),
-            },
+            "image_names": image_names,
+            "feature_names": feature_names,
+            "feature_matrix": feature_matrix,
+            "scaled_matrix": scaled,
+            "reduced_matrix": reduced,
         }
 
     def _build_embedding(self, reduced: np.ndarray, sample_count: int) -> np.ndarray:
-        if sample_count < 3:
-            if reduced.shape[1] == 1:
-                return np.column_stack([reduced[:, 0], np.zeros(sample_count, dtype=float)])
-            return reduced[:, :2]
-
         if sample_count < 5:
             if reduced.shape[1] == 1:
                 return np.column_stack([reduced[:, 0], np.zeros(sample_count, dtype=float)])
@@ -106,8 +117,8 @@ class PhenotypeClusterAnalyzer:
         tsne = TSNE(
             n_components=2,
             perplexity=perplexity,
-            learning_rate='auto',
-            init='pca',
+            learning_rate="auto",
+            init="pca",
             random_state=self.random_state,
         )
         return tsne.fit_transform(reduced)
@@ -124,61 +135,205 @@ class PhenotypeClusterAnalyzer:
             return None
         return float(silhouette_score(reduced, labels))
 
+    def _build_cluster_summaries(
+        self,
+        samples: list[dict],
+        labels: np.ndarray,
+        cluster_centers: np.ndarray,
+        feature_names: list[str],
+    ) -> list[dict]:
+        summaries = []
+
+        for cluster_id in sorted(np.unique(labels).tolist()):
+            members = [sample for index, sample in enumerate(samples) if int(labels[index]) == int(cluster_id)]
+            if not members:
+                continue
+
+            center = cluster_centers[int(cluster_id)]
+            representative = min(
+                members,
+                key=lambda sample: float(np.linalg.norm(np.asarray(sample["features"], dtype=float) - center)),
+            )
+            metrics = self._aggregate_metrics(members, feature_names)
+
+            summaries.append(
+                {
+                    "cluster_id": int(cluster_id),
+                    "sample_count": len(members),
+                    "sample_names": [member["image"] for member in members],
+                    "representative_image": representative.get("image_url"),
+                    "representative_name": representative["image"],
+                    "thumbnail_urls": [member.get("image_url") for member in members if member.get("image_url")],
+                    "aggregate_metrics": metrics["means"],
+                    "metric_ranges": metrics["ranges"],
+                }
+            )
+
+        return summaries
+
+    def _aggregate_metrics(self, samples: list[dict], feature_names: list[str]) -> dict:
+        matrix = np.vstack([np.asarray(sample["features"], dtype=float) for sample in samples])
+        means = {}
+        ranges = {}
+        for index, name in enumerate(feature_names):
+            values = matrix[:, index]
+            means[name] = float(np.mean(values))
+            ranges[name] = {
+                "min": float(np.min(values)),
+                "max": float(np.max(values)),
+            }
+
+        aliases = {
+            # Backward-compatible metric aliases consumed by the web frontend.
+            "spike_length": "mean_spike_length_cm",
+            "spike_length_cm": "mean_spike_length_cm",
+            "mean_spikelet_length": "mean_spikelet_length_mm",
+            "mean_spikelet_length_mm": "mean_spikelet_length_mm",
+            "mean_spikelet_width": "mean_spikelet_width_mm",
+            "mean_spikelet_width_mm": "mean_spikelet_width_mm",
+            "mean_attachment_angle": "mean_attachment_angle",
+            "asymmetry_index": "mean_asymmetry_index",
+            "centroid_offset": "mean_centroid_offset",
+        }
+        for source, alias in aliases.items():
+            if source in means:
+                means[alias] = means[source]
+
+        return {"means": means, "ranges": ranges}
+
+    def _build_dendrogram_payload(self, linkage_matrix: np.ndarray, image_names: list[str]) -> dict:
+        sample_count = len(image_names)
+        leaves_order = dendrogram(linkage_matrix, no_plot=True, labels=image_names)["leaves"]
+        leaf_x = {
+            leaf_index: 40 + order * 44
+            for order, leaf_index in enumerate(leaves_order)
+        }
+
+        node_members = {index: [index] for index in range(sample_count)}
+        node_heights = {index: 0.0 for index in range(sample_count)}
+        nodes = []
+        links = []
+        root_id = None
+
+        for merge_index, row in enumerate(linkage_matrix):
+            left = int(row[0])
+            right = int(row[1])
+            height = float(row[2])
+            node_id = sample_count + merge_index
+            left_members = node_members[left]
+            right_members = node_members[right]
+            members = left_members + right_members
+            x_value = float(np.mean([leaf_x[idx] for idx in members]))
+            node_members[node_id] = members
+            node_heights[node_id] = height
+            root_id = node_id
+
+            nodes.append(
+                {
+                    "id": node_id,
+                    "x": x_value,
+                    "y": height,
+                    "height": height,
+                    "sample_indices": members,
+                    "sample_names": [image_names[idx] for idx in members],
+                    "left": left,
+                    "right": right,
+                }
+            )
+            links.extend(
+                [
+                    {
+                        "id": f"{left}-{node_id}",
+                        "child": left,
+                        "parent": node_id,
+                        "x1": float(np.mean([leaf_x[idx] for idx in left_members])),
+                        "y1": node_heights[left],
+                        "x2": x_value,
+                        "y2": height,
+                    },
+                    {
+                        "id": f"{right}-{node_id}",
+                        "child": right,
+                        "parent": node_id,
+                        "x1": float(np.mean([leaf_x[idx] for idx in right_members])),
+                        "y1": node_heights[right],
+                        "x2": x_value,
+                        "y2": height,
+                    },
+                ]
+            )
+
+        leaf_nodes = [
+            {
+                "id": index,
+                "x": leaf_x[index],
+                "y": 0.0,
+                "height": 0.0,
+                "sample_indices": [index],
+                "sample_names": [name],
+            }
+            for index, name in enumerate(image_names)
+        ]
+
+        return {
+            "root_id": root_id,
+            "leaves": [
+                {
+                    "id": index,
+                    "name": image_names[index],
+                    "x": leaf_x[index],
+                }
+                for index in leaves_order
+            ],
+            "nodes": leaf_nodes + nodes,
+            "links": links,
+            "max_height": float(max((node["height"] for node in nodes), default=1.0)),
+        }
+
     def _save_labels_csv(self, csv_path: Path, image_names, labels, embedding):
-        with open(csv_path, 'w', newline='', encoding='utf-8') as handle:
+        with open(csv_path, "w", newline="", encoding="utf-8") as handle:
             writer = csv.writer(handle)
-            writer.writerow(['image', 'cluster', 'embed_x', 'embed_y'])
+            writer.writerow(["image", "cluster", "embed_x", "embed_y"])
             for image_name, label, point in zip(image_names, labels, embedding):
                 writer.writerow([image_name, int(label), f"{point[0]:.6f}", f"{point[1]:.6f}"])
 
     def _save_centers_csv(self, csv_path: Path, feature_names, centers):
-        with open(csv_path, 'w', newline='', encoding='utf-8') as handle:
+        with open(csv_path, "w", newline="", encoding="utf-8") as handle:
             writer = csv.writer(handle)
-            writer.writerow(['cluster', *feature_names])
+            writer.writerow(["cluster", *feature_names])
             for cluster_id, center in enumerate(centers):
                 writer.writerow([cluster_id, *[f"{value:.6f}" for value in center]])
 
     def _save_embedding_plot(self, image_path: Path, image_names, labels, embedding):
-        plt.figure(figsize=(8.6, 6.6), facecolor='#08111f')
+        plt.figure(figsize=(8.6, 6.6), facecolor="#08111f")
         ax = plt.gca()
-        ax.set_facecolor('#08111f')
+        ax.set_facecolor("#08111f")
         scatter = ax.scatter(
             embedding[:, 0],
             embedding[:, 1],
             c=labels,
-            cmap='viridis',
+            cmap="viridis",
             s=84,
             alpha=0.9,
-            edgecolors='#dff7ff',
+            edgecolors="#dff7ff",
             linewidths=0.8,
         )
         for name, point in zip(image_names, embedding):
-            ax.text(point[0] + 0.8, point[1] + 0.8, name, fontsize=8, color='#dff7ff', alpha=0.88)
-        ax.set_title("Phenotype Cluster Map", color='white', fontsize=14, pad=12)
-        ax.set_xlabel("Embedding X", color='#dff7ff')
-        ax.set_ylabel("Embedding Y", color='#dff7ff')
-        ax.tick_params(colors='#9dc9ff')
-        ax.grid(color='#19324f', alpha=0.5)
+            ax.text(point[0] + 0.8, point[1] + 0.8, name, fontsize=8, color="#dff7ff", alpha=0.88)
+        ax.set_title("Phenotype Cluster Map", color="white", fontsize=14, pad=12)
+        ax.set_xlabel("Embedding X", color="#dff7ff")
+        ax.set_ylabel("Embedding Y", color="#dff7ff")
+        ax.tick_params(colors="#9dc9ff")
+        ax.grid(color="#19324f", alpha=0.5)
         cbar = plt.colorbar(scatter)
-        cbar.ax.yaxis.set_tick_params(color='#dff7ff')
-        plt.setp(plt.getp(cbar.ax.axes, 'yticklabels'), color='#dff7ff')
+        cbar.ax.yaxis.set_tick_params(color="#dff7ff")
+        plt.setp(plt.getp(cbar.ax.axes, "yticklabels"), color="#dff7ff")
         plt.tight_layout()
-        plt.savefig(image_path, dpi=220, facecolor='#08111f')
-        plt.close()
-
-    def _save_heatmap(self, image_path: Path, image_names, distance_matrix):
-        plt.figure(figsize=(7.8, 6.4), facecolor='white')
-        plt.imshow(distance_matrix, cmap='magma')
-        plt.title("Sample Distance Heatmap")
-        plt.xticks(range(len(image_names)), image_names, rotation=45, ha='right', fontsize=8)
-        plt.yticks(range(len(image_names)), image_names, fontsize=8)
-        plt.colorbar(label='Euclidean Distance')
-        plt.tight_layout()
-        plt.savefig(image_path, dpi=220)
+        plt.savefig(image_path, dpi=220, facecolor="#08111f")
         plt.close()
 
     def _save_dendrogram(self, image_path: Path, image_names, linkage_matrix):
-        plt.figure(figsize=(8.6, 6.2), facecolor='white')
+        plt.figure(figsize=(8.6, 6.2), facecolor="white")
         dendrogram(linkage_matrix, labels=image_names, leaf_rotation=45, leaf_font_size=8)
         plt.title("Phenotype Hierarchical Clustering")
         plt.ylabel("Ward Distance")

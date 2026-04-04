@@ -10,11 +10,13 @@
     <div id="app">
         <header class="hero">
             <div class="hero__content">
-                <p class="hero__eyebrow">WHEAT PHENOLAB</p>
-                <h1>小麦麦穗表型智能分析平台</h1>
-                <p class="hero__text">
-                    单图精细解析、批量聚类洞察、交互式小穗浮窗与高分辨率分析画布
-                </p>
+                <p class="hero__eyebrow">WHEAT-PHENOLAB</p>
+                <div class="hero__headline-row">
+                    <h1>小麦麦穗表型智能分析平台</h1>
+                    <p class="hero__text">
+                        —— 让每一株麦穗，都有可计算的答案
+                    </p>
+                </div>
             </div>
             <div class="hero__glow hero__glow--one"></div>
             <div class="hero__glow hero__glow--two"></div>
@@ -24,35 +26,35 @@
             <section class="control">
                 <div class="mode-switch">
                     <button class="mode-switch__btn active" data-mode="single">
-                        <span class="mode-switch__title">单图分析</span>
-                        <span class="mode-switch__sub">精细交互画布</span>
+                        <span class="mode-switch__title">个体分析</span>
+                        <span class="mode-switch__sub">精细画布 骨架提取</span>
                     </button>
                     <button class="mode-switch__btn" data-mode="batch">
-                        <span class="mode-switch__title">批量分析</span>
-                        <span class="mode-switch__sub">自动聚类洞察</span>
+                        <span class="mode-switch__title">聚类分析</span>
+                        <span class="mode-switch__sub">批量分析 聚类洞察</span>
                     </button>
                 </div>
 
                 <div class="dropzone" id="dropzone">
                     <input id="fileInput" type="file" hidden>
                     <div class="dropzone__inner">
-                        <p class="dropzone__title">拖拽图片到这里，或点击选择文件</p>
+                        <p class="dropzone__title">拖拽或选择小麦图片开始分析</p>
                         <div class="dropzone__meta-row">
-                            <p class="dropzone__hint" id="dropHint">单图模式下请选择 1 张图片</p>
+                            <p class="dropzone__hint" id="dropHint">单图模式仅支持 1 张图片，批量模式可一次上传多张图片。</p>
                             <div class="dropzone__actions">
-                                <button id="pickBtn" class="primary-btn">选择文件</button>
+                                <button id="pickBtn" class="primary-btn">选择图片</button>
                             </div>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="status-card status-card--idle" id="statusCard">
                     <div class="status-card__content">
                         <div class="status-card__meta">
                             <span class="status-card__mode">SINGLE</span>
                             <span class="status-card__level">IDLE</span>
                         </div>
-                        <div class="status-card__text">等待上传</div>
+                        <div class="status-card__text">等待选择文件</div>
                     </div>
                 </div>
                 <div class="file-list" id="fileList"></div>
@@ -62,8 +64,8 @@
                 <section class="panel" id="singlePanel">
                     <div class="panel__header">
                         <div>
-                            <p class="panel__eyebrow">Analysis Canvas</p>
-                            <h2>分析画布</h2>
+                            <p class="panel__eyebrow">Individual</p>
+                            <h2>个体分析</h2>
                         </div>
                     </div>
 
@@ -103,21 +105,101 @@
                 <section class="panel hidden" id="batchPanel">
                     <div class="panel__header">
                         <div>
-                            <p class="panel__eyebrow">Batch Insights</p>
-                            <h2>聚类洞察</h2>
+                            <p class="panel__eyebrow">Cluster</p>
+                            <h2>聚类分析</h2>
                         </div>
-                        <div class="download-links" id="downloadLinks"></div>
+                        <div class="cluster-count-control" id="clusterCountControl">
+                            <div class="cluster-count-control__main">
+                                <span class="cluster-field-label cluster-field-label--strong">聚类簇数</span>
+                                <div class="cluster-count-control__track-wrap">
+                                    <input id="clusterCountInput" type="range" min="2" max="8" value="3" disabled>
+                                </div>
+                                <strong id="clusterCountValue">3</strong>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="cluster-grid">
-                        <div class="cluster-map" id="clusterMap"></div>
-                        <div class="cluster-detail" id="clusterDetail">
-                            <p class="cluster-detail__placeholder">完成批量分析后，点击样本点查看详情。</p>
+                    <div class="cluster-workspace">
+                        <div class="cluster-canvas-shell">
+                            <section class="cluster-canvas-panel">
+                                <div class="cluster-canvas-panel__header">
+                                    <div>
+                                        <p class="panel__eyebrow">Scatter</p>
+                                        <h3>聚类散点图</h3>
+                                    </div>
+                                    <div class="cluster-score" id="clusterScore">Silhouette: N/A</div>
+                                </div>
+                                <div class="cluster-map" id="clusterMap"></div>
+                            </section>
+
+                            <section class="cluster-canvas-panel">
+                                <div class="cluster-canvas-panel__header">
+                                    <div>
+                                        <p class="panel__eyebrow">Hierarchy</p>
+                                        <h3>层次聚类树状图</h3>
+                                    </div>
+                                </div>
+                                <div class="cluster-dendrogram" id="clusterDendrogram"></div>
+                            </section>
                         </div>
                     </div>
 
-                    <div class="artifact-grid" id="artifactGrid"></div>
-                    <div class="batch-cards" id="batchCards"></div>
+                    <div class="cluster-controls">
+                        <div class="cluster-controls__header">
+                            <p class="panel__eyebrow">Filter</p>
+                            <h3>聚类结果筛选</h3>
+                        </div>
+                        <div class="cluster-toolbar">
+                            <label class="cluster-toolbar__field cluster-toolbar__field--inline">
+                                <span class="cluster-field-icon" title="排序指标" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M4 4H10V20H4V4Z" stroke="currentColor" stroke-width="1.8"/>
+                                        <path d="M13 8H19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                        <path d="M13 12H17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                        <path d="M13 16H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                        <path d="M21 16L18 20L15 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                                <div class="cascade-select" id="clusterSortCascade">
+                                    <button type="button" class="cascade-select__trigger" id="clusterSortTrigger"></button>
+                                    <div class="cascade-select__menu hidden" id="clusterSortMenu"></div>
+                                </div>
+                            </label>
+                            <label class="cluster-toolbar__field cluster-toolbar__field--inline cluster-toolbar__field--metric">
+                                <span class="cluster-field-icon" title="筛选指标" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M3 4H21L14 12V19L10 21V12L3 4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                                <div class="cluster-filter-inline">
+                                    <div class="cascade-select" id="clusterFilterCascade">
+                                        <button type="button" class="cascade-select__trigger" id="clusterFilterTrigger"></button>
+                                        <div class="cascade-select__menu hidden" id="clusterFilterMenu"></div>
+                                    </div>
+                                    <input id="clusterFilterValue" type="number" step="0.01" placeholder="阈值，例如 5.0">
+                                    <label class="cluster-inline-toggle" title="仅显示命中类">
+                                        <input id="clusterHideUnmatched" type="checkbox">
+                                        <span class="cluster-inline-toggle__switch" aria-hidden="true"></span>
+                                        <span class="cluster-inline-toggle__text">仅显示命中类</span>
+                                    </label>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="cluster-cards" id="clusterCards"></div>
+                    </div>
+
+                    <section class="cluster-compare hidden" id="clusterCompare">
+                        <div class="cluster-canvas-panel__header">
+                            <div>
+                                <p class="panel__eyebrow">Comparison</p>
+                                <h3>聚类对比</h3>
+                            </div>
+                        </div>
+                        <div class="cluster-compare__summary" id="clusterCompareSummary"></div>
+                        <div class="cluster-compare__chart" id="clusterCompareChart"></div>
+                        <div class="cluster-compare__gallery" id="clusterCompareGallery"></div>
+                    </section>
                 </section>
             </section>
         </main>
@@ -128,11 +210,25 @@
         <div class="preview-modal__dialog">
             <div class="preview-modal__header">
                 <h3 id="previewTitle">图片预览</h3>
-                <button class="preview-modal__close" id="previewClose" aria-label="关闭预览">×</button>
+                <button class="preview-modal__close" id="previewClose" aria-label="关闭图片预览">×</button>
             </div>
             <img id="previewImage" alt="preview image">
         </div>
     </div>
+
+    <div class="preview-modal hidden" id="clusterModal" role="dialog" aria-modal="true" aria-labelledby="clusterModalTitle">
+        <div class="preview-modal__backdrop" id="clusterModalBackdrop"></div>
+        <div class="preview-modal__dialog preview-modal__dialog--cluster">
+            <div class="preview-modal__header">
+                <h3 id="clusterModalTitle">聚类详情</h3>
+                <button class="preview-modal__close" id="clusterModalClose" aria-label="关闭聚类详情">×</button>
+            </div>
+            <div class="cluster-modal__summary" id="clusterModalSummary"></div>
+            <div class="cluster-modal__grid" id="clusterModalGrid"></div>
+        </div>
+    </div>
+
+    <div class="cluster-hover-card hidden" id="clusterHoverCard"></div>
 
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>

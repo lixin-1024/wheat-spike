@@ -4,10 +4,23 @@ const state = {
     previewUrls: [],
     singleResult: null,
     batchResult: null,
+    batchRunId: null,
+    batchStatusPoller: null,
     statusText: '等待上传',
     statusType: 'idle',
     isAnalyzing: false,
     currentView: 'spikelet',
+    batchSortMetric: 'mean_spike_length_cm',
+    batchFilterMetric: 'mean_spike_length_cm',
+    batchFilterValue: '',
+    batchHideUnmatched: false,
+    batchProgress: null,
+    comparisonClusterIds: [],
+    hoveredSampleName: null,
+    selectedSampleName: null,
+    hoveredClusterId: null,
+    selectedClusterId: null,
+    hoveredDendrogramNodeId: null,
     scale: 1,
     fitScale: null,
     translateX: 0,
@@ -20,6 +33,7 @@ const state = {
     skeletonFxPointer: null,
     skeletonFxTargets: [],
     skeletonFxAnimationFrame: null,
+    clusterMetricOptions: [],
 };
 
 const refs = {};
@@ -58,15 +72,34 @@ function bindRefs() {
     refs.resetZoomBtn = document.getElementById('resetZoomBtn');
     refs.zoomBadge = document.getElementById('zoomBadge');
     refs.clusterMap = document.getElementById('clusterMap');
-    refs.clusterDetail = document.getElementById('clusterDetail');
-    refs.artifactGrid = document.getElementById('artifactGrid');
-    refs.batchCards = document.getElementById('batchCards');
-    refs.downloadLinks = document.getElementById('downloadLinks');
+    refs.clusterDendrogram = document.getElementById('clusterDendrogram');
+    refs.clusterCards = document.getElementById('clusterCards');
+    refs.clusterScore = document.getElementById('clusterScore');
+    refs.clusterCountControl = document.getElementById('clusterCountControl');
+    refs.clusterCountInput = document.getElementById('clusterCountInput');
+    refs.clusterCountValue = document.getElementById('clusterCountValue');
+    refs.clusterSortTrigger = document.getElementById('clusterSortTrigger');
+    refs.clusterSortMenu = document.getElementById('clusterSortMenu');
+    refs.clusterFilterTrigger = document.getElementById('clusterFilterTrigger');
+    refs.clusterFilterMenu = document.getElementById('clusterFilterMenu');
+    refs.clusterFilterValue = document.getElementById('clusterFilterValue');
+    refs.clusterHideUnmatched = document.getElementById('clusterHideUnmatched');
     refs.previewModal = document.getElementById('previewModal');
     refs.previewBackdrop = document.getElementById('previewBackdrop');
     refs.previewClose = document.getElementById('previewClose');
     refs.previewImage = document.getElementById('previewImage');
     refs.previewTitle = document.getElementById('previewTitle');
+    refs.clusterModal = document.getElementById('clusterModal');
+    refs.clusterModalBackdrop = document.getElementById('clusterModalBackdrop');
+    refs.clusterModalClose = document.getElementById('clusterModalClose');
+    refs.clusterModalTitle = document.getElementById('clusterModalTitle');
+    refs.clusterModalSummary = document.getElementById('clusterModalSummary');
+    refs.clusterModalGrid = document.getElementById('clusterModalGrid');
+    refs.clusterHoverCard = document.getElementById('clusterHoverCard');
+    refs.clusterCompare = document.getElementById('clusterCompare');
+    refs.clusterCompareSummary = document.getElementById('clusterCompareSummary');
+    refs.clusterCompareChart = document.getElementById('clusterCompareChart');
+    refs.clusterCompareGallery = document.getElementById('clusterCompareGallery');
 }
 
 function bindEvents() {
@@ -149,9 +182,14 @@ function bindEvents() {
 
     refs.previewClose.addEventListener('click', closePreview);
     refs.previewBackdrop.addEventListener('click', closePreview);
+    refs.clusterModalClose.addEventListener('click', closeClusterModal);
+    refs.clusterModalBackdrop.addEventListener('click', closeClusterModal);
     window.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !refs.previewModal.classList.contains('hidden')) {
             closePreview();
+        }
+        if (event.key === 'Escape' && !refs.clusterModal.classList.contains('hidden')) {
+            closeClusterModal();
         }
     });
 
@@ -172,6 +210,38 @@ function bindEvents() {
     refs.viewer.addEventListener('pointerleave', clearSkeletonHoverFx);
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
+
+    refs.clusterCountInput.addEventListener('input', handleClusterCountInput);
+    refs.clusterCountInput.addEventListener('change', handleClusterCountChange);
+    refs.clusterSortTrigger.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleMetricCascadeMenu('sort');
+    });
+    refs.clusterFilterTrigger.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleMetricCascadeMenu('filter');
+    });
+    refs.clusterSortMenu.addEventListener('click', (event) => {
+        if (!handleMetricCascadeSelect(event, 'sort')) {
+            return;
+        }
+        renderBatch(state.batchResult);
+    });
+    refs.clusterFilterMenu.addEventListener('click', (event) => {
+        if (!handleMetricCascadeSelect(event, 'filter')) {
+            return;
+        }
+        renderBatch(state.batchResult);
+    });
+    document.addEventListener('click', () => closeMetricCascadeMenus());
+    refs.clusterFilterValue.addEventListener('input', () => {
+        state.batchFilterValue = refs.clusterFilterValue.value;
+        renderBatch(state.batchResult);
+    });
+    refs.clusterHideUnmatched.addEventListener('change', () => {
+        state.batchHideUnmatched = refs.clusterHideUnmatched.checked;
+        renderBatch(state.batchResult);
+    });
 }
 
 function renderMode(options = {}) {
@@ -239,6 +309,7 @@ function renderFiles() {
     if (!state.isAnalyzing) {
         setStatusBySelection();
     }
+    syncClusterCountControlState();
 }
 
 function setStatus(text, type = 'idle') {
@@ -253,6 +324,7 @@ function renderStatusCard() {
     const timeTag = formatStatusTime(new Date());
     const showTime = !(state.statusType === 'idle' && state.statusText === '等待上传');
     const showInlineRunBtn = state.statusType === 'ready' && !state.isAnalyzing && state.files.length > 0;
+    const showBatchProgress = state.mode === 'batch' && state.statusType === 'running' && state.batchProgress && state.batchProgress.total > 0;
     let statusTextHtml = escapeHtml(state.statusText);
 
     if (showInlineRunBtn) {
@@ -277,6 +349,13 @@ function renderStatusCard() {
                 ${showTime ? `<span class="status-card__time">${timeTag}</span>` : ''}
             </div>
             <div class="status-card__text">${statusTextHtml}</div>
+            ${showBatchProgress ? `
+                <div class="status-card__progress">
+                    <div class="status-card__progress-label">${escapeHtml(state.batchProgress.label || '批量分析中')}</div>
+                    <div class="status-card__progress-bar"><span style="width:${Math.max(0, Math.min(state.batchProgress.percent || 0, 100))}%"></span></div>
+                    <div class="status-card__progress-meta">${state.batchProgress.current || 0} / ${state.batchProgress.total || 0}</div>
+                </div>
+            ` : ''}
         </div>
     `;
     refs.statusCard.className = `status-card status-card--${state.statusType}`;
@@ -284,11 +363,23 @@ function renderStatusCard() {
 
 function resetPanels() {
     refs.singleMetrics.innerHTML = '';
-    refs.batchCards.innerHTML = '';
+    refs.clusterCards.innerHTML = '';
     refs.clusterMap.innerHTML = '';
-    refs.clusterDetail.innerHTML = '<p class="cluster-detail__placeholder">完成批量分析后，点击样本点查看详情。</p>';
-    refs.artifactGrid.innerHTML = '';
-    refs.downloadLinks.innerHTML = '';
+    refs.clusterDendrogram.innerHTML = '';
+    refs.clusterScore.textContent = 'Silhouette: N/A';
+    refs.clusterCompare.classList.add('hidden');
+    refs.clusterCompareSummary.innerHTML = '';
+    refs.clusterCompareChart.innerHTML = '';
+    refs.clusterCompareGallery.innerHTML = '';
+    state.batchRunId = null;
+    state.batchProgress = null;
+    state.comparisonClusterIds = [];
+    state.hoveredSampleName = null;
+    state.selectedSampleName = null;
+    state.hoveredClusterId = null;
+    state.selectedClusterId = null;
+    state.hoveredDendrogramNodeId = null;
+    stopBatchPolling();
     refs.viewerImage.removeAttribute('src');
     refs.viewerImage.classList.add('hidden');
     state.fitScale = null;
@@ -300,6 +391,8 @@ function resetPanels() {
     clearSkeletonHoverFx();
     refs.overlaySvg.innerHTML = '';
     refs.tooltip.classList.add('hidden');
+    hideClusterHoverCard();
+    closeClusterModal();
 }
 
 async function runAnalysis() {
@@ -333,9 +426,10 @@ async function runAnalysis() {
             renderSingleMetrics(payload);
             setStatus('单张分析完成', 'success');
         } else {
-            state.batchResult = payload;
-            renderBatch(payload);
-            setStatus('批量分析完成', 'success');
+            state.batchRunId = payload.run_id;
+            updateBatchProgress({ stage: 'queued', current: 0, total: state.files.length, percent: 0 });
+            startBatchPolling(payload.run_id);
+            setStatus('批量任务已启动，正在分析中...', 'running');
         }
     } catch (error) {
         setStatus(`分析失败：${error.message}`, 'error');
@@ -343,6 +437,159 @@ async function runAnalysis() {
         state.isAnalyzing = false;
         renderStatusCard();
     }
+}
+
+function startBatchPolling(runId) {
+    stopBatchPolling();
+    const poll = async () => {
+        try {
+            const response = await fetch(`/api/batch-status/${runId}`);
+            const status = await response.json();
+            if (!response.ok || status.error) {
+                throw new Error(status.error || '批量状态获取失败');
+            }
+            updateBatchProgress(status);
+            if (status.state === 'completed') {
+                stopBatchPolling();
+                await fetchBatchResult(runId);
+                return;
+            }
+            if (status.state === 'error') {
+                stopBatchPolling();
+                throw new Error(status.error || '批量分析失败');
+            }
+        } catch (error) {
+            stopBatchPolling();
+            state.isAnalyzing = false;
+            state.batchProgress = null;
+            setStatus(`批量分析失败：${error.message}`, 'error');
+            renderStatusCard();
+        }
+    };
+
+    poll();
+    state.batchStatusPoller = window.setInterval(poll, 1200);
+}
+
+function stopBatchPolling() {
+    if (!state.batchStatusPoller) {
+        return;
+    }
+    window.clearInterval(state.batchStatusPoller);
+    state.batchStatusPoller = null;
+}
+
+async function fetchBatchResult(runId) {
+    const response = await fetch(`/api/batch-result/${runId}`);
+    const payload = await response.json();
+    if (!response.ok || payload.error) {
+        throw new Error(payload.error || '批量结果获取失败');
+    }
+    state.batchRunId = payload.run_id || runId;
+    state.batchResult = payload;
+    state.isAnalyzing = false;
+    state.batchProgress = null;
+    initializeBatchControls(payload.cluster);
+    renderBatch(payload);
+    setStatus('批量分析完成', 'success');
+    renderStatusCard();
+}
+
+function updateBatchProgress(status) {
+    const stageMap = {
+        queued: '等待进入分析队列',
+        analyzing: `正在分析 ${status.current_file || '当前样本'}`,
+        clustering: '正在执行聚类与树状图计算',
+        completed: '批量分析与聚类完成',
+        error: '批量分析失败',
+    };
+    state.batchProgress = {
+        label: stageMap[status.stage] || '批量任务处理中',
+        percent: Math.max(0, Math.min(status.percent || 0, 100)),
+        current: status.current || 0,
+        total: status.total || 0,
+    };
+    renderStatusCard();
+}
+
+function initializeBatchControls(cluster) {
+    const metrics = getClusterMetricOptions(cluster);
+    state.clusterMetricOptions = metrics;
+
+    const fallbackMetric = metrics.find(metric => metric.key === 'mean_spike_length_cm')?.key || metrics[0]?.key || '';
+    state.batchSortMetric = metrics.some(metric => metric.key === state.batchSortMetric) ? state.batchSortMetric : fallbackMetric;
+    state.batchFilterMetric = metrics.some(metric => metric.key === state.batchFilterMetric) ? state.batchFilterMetric : fallbackMetric;
+    renderMetricCascadeControls();
+
+    const options = cluster?.cluster_options || { min: 2, max: 8, current: 3 };
+    const minValue = Math.max(2, Number(options.min) || 2);
+    const sampleCount = Number(cluster?.image_names?.length || cluster?.embedding?.length || 0);
+    const backendMax = Math.max(minValue, Number(options.max) || 8);
+    const safeMax = sampleCount > minValue ? Math.min(backendMax, sampleCount - 1) : minValue;
+    const safeCurrent = Math.min(Math.max(Number(options.current) || minValue, minValue), safeMax);
+
+    refs.clusterCountInput.min = String(minValue);
+    refs.clusterCountInput.max = String(safeMax);
+    refs.clusterCountInput.value = String(safeCurrent);
+    refs.clusterCountValue.textContent = String(safeCurrent);
+    const validClusterIds = new Set((cluster?.clusters || []).map(item => item.cluster_id));
+    state.comparisonClusterIds = state.comparisonClusterIds.filter(id => validClusterIds.has(id));
+    syncClusterCountControlState();
+}
+
+function handleClusterCountInput() {
+    refs.clusterCountValue.textContent = String(refs.clusterCountInput.value);
+}
+
+async function handleClusterCountChange() {
+    const minValue = Number.parseInt(refs.clusterCountInput.min, 10);
+    const maxValue = Number.parseInt(refs.clusterCountInput.max, 10);
+    const rawCount = Number.parseInt(refs.clusterCountInput.value, 10);
+    const nextCount = Math.min(Math.max(rawCount, minValue), maxValue);
+    refs.clusterCountInput.value = String(nextCount);
+    refs.clusterCountValue.textContent = String(nextCount);
+    if (!state.batchRunId || !Number.isInteger(nextCount)) {
+        return;
+    }
+
+    try {
+        refs.clusterCountInput.dataset.busy = '1';
+        syncClusterCountControlState();
+        setStatus(`正在调整聚类类别到 ${nextCount} 类...`, 'running');
+        const response = await fetch('/api/recluster', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ run_id: state.batchRunId, n_clusters: nextCount }),
+        });
+        const payload = await response.json();
+        if (!response.ok || payload.error) {
+            throw new Error(payload.error || '重聚类失败');
+        }
+        state.batchResult.cluster = payload.cluster;
+        initializeBatchControls(state.batchResult.cluster);
+        refs.clusterCountInput.value = nextCount;
+        refs.clusterCountValue.textContent = nextCount;
+        renderBatch(state.batchResult);
+        setStatus(`已更新为 ${nextCount} 类聚类结果`, 'success');
+    } catch (error) {
+        state.batchProgress = null;
+        setStatus(`重聚类失败：${error.message}`, 'error');
+    } finally {
+        refs.clusterCountInput.dataset.busy = '0';
+        syncClusterCountControlState();
+        renderStatusCard();
+    }
+}
+
+function syncClusterCountControlState() {
+    if (!refs.clusterCountInput) {
+        return;
+    }
+    const hasUploadedFiles = state.files.length > 0;
+    const isBusy = refs.clusterCountInput.dataset.busy === '1';
+    const disabled = !hasUploadedFiles || isBusy;
+    refs.clusterCountInput.disabled = disabled;
+    refs.clusterCountControl?.classList.toggle('is-disabled', disabled);
 }
 
 function setFiles(files) {
@@ -378,8 +625,15 @@ function removeFileAt(index) {
 }
 
 function openPreview(index) {
-    refs.previewTitle.textContent = state.files[index].name;
-    refs.previewImage.src = state.previewUrls[index];
+    openImagePreview(state.files[index].name, state.previewUrls[index]);
+}
+
+function openImagePreview(title, imageUrl) {
+    if (!imageUrl) {
+        return;
+    }
+    refs.previewTitle.textContent = title || '图片预览';
+    refs.previewImage.src = imageUrl;
     refs.previewModal.classList.remove('hidden');
     document.body.classList.add('modal-open');
 }
@@ -387,7 +641,9 @@ function openPreview(index) {
 function closePreview() {
     refs.previewModal.classList.add('hidden');
     refs.previewImage.removeAttribute('src');
-    document.body.classList.remove('modal-open');
+    if (!refs.clusterModal || refs.clusterModal.classList.contains('hidden')) {
+        document.body.classList.remove('modal-open');
+    }
 }
 
 function setStatusBySelection() {
@@ -860,49 +1116,102 @@ function drawSkeletonHoverFx(timestamp) {
 }
 
 function renderBatch(payload) {
-    const cluster = payload.cluster;
-    const results = payload.results || [];
-    renderBatchCards(results, cluster);
+    if (!payload) {
+        return;
+    }
+    if (!state.batchRunId && payload.run_id) {
+        state.batchRunId = payload.run_id;
+    }
+    const cluster = payload?.cluster;
+    const results = payload?.results || [];
+
+    if (!cluster || !cluster.embedding || !cluster.embedding.length) {
+        refs.clusterMap.innerHTML = '<p class="cluster-detail__placeholder">有效样本不足，暂未生成聚类结果。</p>';
+        refs.clusterDendrogram.innerHTML = '<p class="cluster-detail__placeholder">暂无树状图数据。</p>';
+        refs.clusterCards.innerHTML = '';
+        refs.clusterScore.textContent = 'Silhouette: N/A';
+        return;
+    }
+
+    refs.clusterScore.textContent = `Silhouette: ${cluster.silhouette_score ? cluster.silhouette_score.toFixed(3) : 'N/A'}`;
     renderClusterMap(results, cluster);
-    renderArtifacts(payload);
+    renderDendrogram(cluster);
+    renderClusterCards(cluster);
+    renderClusterCompare(cluster);
+    syncBatchDetail(cluster, results);
 }
 
-function renderBatchCards(results, cluster) {
-    const labelMap = buildLabelMap(cluster);
-    refs.batchCards.innerHTML = results.map(result => {
-        const clusterLabel = labelMap[result.image_name || result.filename] ?? '-';
+function renderClusterCards(cluster) {
+    const cards = getVisibleClusters(cluster);
+    const clusterMap = new Map((cluster?.clusters || []).map(item => [item.cluster_id, item]));
+    refs.clusterCards.innerHTML = cards.map(item => {
+        const active = state.selectedClusterId === item.cluster_id || state.hoveredClusterId === item.cluster_id;
+        const inComparison = state.comparisonClusterIds.includes(item.cluster_id);
         return `
-            <div class="batch-card" data-filename="${result.image_name || result.filename}">
-                <div class="batch-card__cluster">Cluster ${clusterLabel}</div>
-                <div class="batch-card__name">${result.image_name || result.filename}</div>
-                <div class="batch-card__metrics">
-                    <div>穗长: ${formatMetric(result.ear_pheno.spike_length_cm, 'cm', result.ear_pheno.spike_length_px, 'px')}</div>
-                    <div>平均着生角: ${result.ear_pheno.mean_attachment_angle.toFixed(2)}°</div>
-                    <div>对称度: ${result.ear_pheno.asymmetry_index.toFixed(4)}</div>
+            <article class="cluster-card ${active ? 'is-active' : ''} ${item.__matched ? '' : 'is-muted'}" data-cluster-id="${item.cluster_id}">
+                <div class="cluster-card__eyebrow">Cluster ${item.cluster_id + 1}</div>
+                <div class="cluster-card__header">
+                    <div>
+                        <h3>第 ${item.cluster_id + 1} 类</h3>
+                        <p>${item.sample_count} 个样本</p>
+                    </div>
+                    <div class="cluster-card__badge">${formatClusterMetric(item.aggregate_metrics[state.batchSortMetric])}</div>
                 </div>
-            </div>
+                <div class="cluster-card__cover">
+                    ${item.representative_image ? `<img src="${item.representative_image}" alt="cluster ${item.cluster_id} representative">` : '<div class="cluster-card__cover-empty">No Image</div>'}
+                </div>
+                <div class="cluster-card__hint">点击查看该簇详情</div>
+                <div class="cluster-card__actions">
+                    <button class="ghost-btn cluster-card__action cluster-card__action--compare ${inComparison ? 'is-active' : ''}" data-action="compare" data-cluster-id="${item.cluster_id}">
+                        ${inComparison ? '取消对比' : '加入对比'}
+                    </button>
+                    <button class="ghost-btn cluster-card__action cluster-card__action--export" data-action="export" data-cluster-id="${item.cluster_id}">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M12 3V14"/>
+                            <path d="M8 10L12 14L16 10"/>
+                            <path d="M5 17H19"/>
+                            <path d="M7 21H17"/>
+                        </svg>
+                        <span>导出</span>
+                    </button>
+                </div>
+            </article>
         `;
     }).join('');
 
-    refs.batchCards.querySelectorAll('.batch-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const filename = card.dataset.filename;
-            const item = results.find(entry => (entry.image_name || entry.filename) === filename);
-            if (item) {
-                renderBatchDetail(item, cluster ? buildLabelMap(cluster)[item.image_name || item.filename] : null);
+    refs.clusterCards.querySelectorAll('.cluster-card').forEach(card => {
+        const clusterId = Number.parseInt(card.dataset.clusterId, 10);
+        card.addEventListener('mouseenter', () => {
+            state.hoveredClusterId = clusterId;
+            hideClusterHoverCard();
+            refreshDendrogramHighlight(cluster?.dendrogram);
+        });
+        card.addEventListener('mouseleave', () => {
+            state.hoveredClusterId = null;
+            hideClusterHoverCard();
+            refreshDendrogramHighlight(cluster?.dendrogram);
+        });
+        card.addEventListener('click', () => openClusterModal(clusterId));
+    });
+
+    refs.clusterCards.querySelectorAll('.cluster-card__action').forEach(button => {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const clusterId = Number.parseInt(button.dataset.clusterId, 10);
+            if (button.dataset.action === 'compare') {
+                toggleClusterComparison(clusterId);
+                return;
+            }
+            if (button.dataset.action === 'export') {
+                exportCluster(clusterId);
             }
         });
     });
 }
 
 function renderClusterMap(results, cluster) {
-    if (!cluster || !cluster.embedding || !cluster.embedding.length) {
-        refs.clusterMap.innerHTML = '<p class="cluster-detail__placeholder">样本不足，未生成聚类嵌入图。</p>';
-        return;
-    }
-
-    const width = refs.clusterMap.clientWidth - 10;
-    const height = 300;
+    const width = Math.max(320, refs.clusterMap.clientWidth - 12);
+    const height = 360;
     const points = cluster.embedding;
     const xs = points.map(point => point[0]);
     const ys = points.map(point => point[1]);
@@ -915,75 +1224,289 @@ function renderClusterMap(results, cluster) {
     const scaleY = value => height - padding - ((value - minY) / Math.max(maxY - minY, 1e-6)) * (height - padding * 2);
 
     const labelMap = buildLabelMap(cluster);
+    const resultMap = buildResultMap(results);
     refs.clusterMap.innerHTML = `
-        <div class="metric-card">
-            <div class="metric-card__label">层次聚类 + t-SNE</div>
-            <div class="metric-card__value">${cluster.silhouette_score ? cluster.silhouette_score.toFixed(3) : 'N/A'}</div>
-        </div>
         <svg class="cluster-svg" viewBox="0 0 ${width} ${height}">
             ${points.map((point, index) => `
-                <g class="cluster-point" data-filename="${cluster.image_names[index]}">
-                    <circle cx="${scaleX(point[0])}" cy="${scaleY(point[1])}" r="9" fill="${clusterColor(labelMap[cluster.image_names[index]])}" />
-                    <text x="${scaleX(point[0]) + 12}" y="${scaleY(point[1]) + 4}" fill="#dff7ff" font-size="11">${cluster.image_names[index]}</text>
+                <g class="cluster-point ${getPointStateClass(cluster.image_names[index], labelMap[cluster.image_names[index]])}" data-filename="${cluster.image_names[index]}">
+                    <circle cx="${scaleX(point[0])}" cy="${scaleY(point[1])}" r="${getPointRadius(cluster.image_names[index])}" fill="${clusterColor(labelMap[cluster.image_names[index]])}" />
+                    <text x="${scaleX(point[0]) + 12}" y="${scaleY(point[1]) + 4}">${cluster.image_names[index]}</text>
                 </g>
             `).join('')}
         </svg>
     `;
 
     refs.clusterMap.querySelectorAll('.cluster-point').forEach(point => {
+        const filename = point.dataset.filename;
+        point.addEventListener('mouseenter', () => {
+            state.hoveredSampleName = filename;
+            refreshDendrogramHighlight(cluster?.dendrogram);
+        });
+        point.addEventListener('mousemove', (event) => {
+            showClusterHoverCardForSample(event, resultMap[filename], labelMap[filename]);
+        });
+        point.addEventListener('mouseleave', () => {
+            state.hoveredSampleName = null;
+            hideClusterHoverCard();
+            refreshDendrogramHighlight(cluster?.dendrogram);
+        });
         point.addEventListener('click', () => {
-            const filename = point.dataset.filename;
-            const result = results.find(entry => (entry.image_name || entry.filename) === filename);
-            if (result) {
-                renderBatchDetail(result, labelMap[filename]);
+            // Clear hover state before rerender to avoid stale highlight after DOM rebuild.
+            state.hoveredSampleName = null;
+            hideClusterHoverCard();
+            const nextClusterId = labelMap[filename];
+            if (state.selectedSampleName === filename) {
+                state.selectedSampleName = null;
+                state.selectedClusterId = null;
+            } else {
+                state.selectedSampleName = filename;
+                state.selectedClusterId = nextClusterId;
             }
+            renderBatch(state.batchResult);
         });
     });
 }
 
-function renderBatchDetail(result, clusterLabel) {
-    refs.clusterDetail.innerHTML = `
-        <div class="cluster-detail__sample">
-            <h3>${result.image_name || result.filename}</h3>
-            <p>Cluster: ${clusterLabel ?? '-'}</p>
-            <p>穗长: ${formatMetric(result.ear_pheno.spike_length_cm, 'cm', result.ear_pheno.spike_length_px, 'px')}</p>
-            <p>平均小穗长度: ${formatMetric(result.ear_pheno.mean_spikelet_length_mm, 'mm', result.ear_pheno.mean_spikelet_length, 'px')}</p>
-            <p>平均小穗宽度: ${formatMetric(result.ear_pheno.mean_spikelet_width_mm, 'mm', result.ear_pheno.mean_spikelet_width, 'px')}</p>
-            <p>平均着生角: ${result.ear_pheno.mean_attachment_angle.toFixed(2)}°</p>
-            <p>对称度: ${result.ear_pheno.asymmetry_index.toFixed(4)}</p>
-            <p>重心偏移度: ${result.ear_pheno.centroid_offset.toFixed(4)}</p>
-            <p><a href="${result.images.analysis}" target="_blank">查看综合分析图</a></p>
-        </div>
-    `;
-}
-
-function renderArtifacts(payload) {
-    refs.downloadLinks.innerHTML = `
-        <a href="${payload.downloads.phenotypes_csv}" target="_blank">表型 CSV</a>
-        <a href="${payload.downloads.features_csv}" target="_blank">特征 CSV</a>
-    `;
-
-    if (!payload.cluster) {
-        refs.artifactGrid.innerHTML = '';
+function renderDendrogram(cluster) {
+    const data = cluster?.dendrogram;
+    if (!data?.nodes?.length) {
+        refs.clusterDendrogram.innerHTML = '<p class="cluster-detail__placeholder">暂无树状图数据。</p>';
         return;
     }
 
-    refs.artifactGrid.innerHTML = `
-        <div class="artifact-card">
-            <div>聚类嵌入图</div>
-            <a href="${payload.cluster.artifacts.embedding}" target="_blank"><img src="${payload.cluster.artifacts.embedding}" alt="cluster embedding"></a>
+    const width = Math.max(320, refs.clusterDendrogram.clientWidth - 12);
+    const height = 280;
+    const maxX = Math.max(...data.nodes.map(node => node.x), 1);
+    const maxY = Math.max(data.max_height || 1, 1);
+    const scaleX = value => 24 + (value / maxX) * (width - 48);
+    const scaleY = value => height - 30 - (value / maxY) * (height - 58);
+
+    refs.clusterDendrogram.innerHTML = `
+        <svg class="cluster-svg cluster-svg--dendrogram" viewBox="0 0 ${width} ${height}">
+            ${data.links.map(link => `
+                <path
+                    class="dendrogram-link ${isDendrogramLinkActive(link, data) ? 'is-active' : ''}"
+                    d="M ${scaleX(link.x1)} ${scaleY(link.y1)} V ${scaleY(link.y2)} H ${scaleX(link.x2)}"
+                />
+            `).join('')}
+            ${data.nodes.map(node => `
+                <g class="dendrogram-node ${getDendrogramNodeState(node)}" data-node-id="${node.id}">
+                    <circle cx="${scaleX(node.x)}" cy="${scaleY(node.y)}" r="${node.height > 0 ? 6 : 4}"></circle>
+                </g>
+            `).join('')}
+            ${data.leaves.map(leaf => `
+                <text class="dendrogram-label" x="${scaleX(leaf.x)}" y="${height - 8}" text-anchor="middle">${leaf.name}</text>
+            `).join('')}
+        </svg>
+    `;
+
+    refs.clusterDendrogram.querySelectorAll('.dendrogram-node').forEach(nodeElement => {
+        const nodeId = Number.parseInt(nodeElement.dataset.nodeId, 10);
+        nodeElement.addEventListener('mouseenter', () => {
+            state.hoveredDendrogramNodeId = nodeId;
+            refreshDendrogramHighlight(data);
+        });
+        nodeElement.addEventListener('mousemove', (event) => {
+            showClusterHoverCardForDendrogramNode(event, cluster, nodeId);
+        });
+        nodeElement.addEventListener('mouseleave', () => {
+            state.hoveredDendrogramNodeId = null;
+            hideClusterHoverCard();
+            refreshDendrogramHighlight(data);
+        });
+    });
+
+    refreshDendrogramHighlight(data);
+}
+
+function syncBatchDetail(cluster, results) {
+    void cluster;
+    void results;
+}
+
+function toggleClusterComparison(clusterId) {
+    const next = new Set(state.comparisonClusterIds);
+    if (next.has(clusterId)) {
+        next.delete(clusterId);
+    } else {
+        next.add(clusterId);
+    }
+    state.comparisonClusterIds = [...next];
+    renderBatch(state.batchResult);
+}
+
+function exportCluster(clusterId) {
+    const runId = state.batchRunId || state.batchResult?.run_id;
+    if (!runId) {
+        setStatus('导出失败：缺少批量任务 run_id，请重新执行一次批量分析。', 'error');
+        renderStatusCard();
+        return;
+    }
+    window.open(`/api/export-cluster/${runId}/${clusterId}`, '_blank', 'noopener');
+}
+
+function renderClusterCompare(cluster) {
+    const selected = (cluster?.clusters || []).filter(item => state.comparisonClusterIds.includes(item.cluster_id));
+    if (!selected.length) {
+        refs.clusterCompare.classList.add('hidden');
+        refs.clusterCompareSummary.innerHTML = '';
+        refs.clusterCompareChart.innerHTML = '';
+        refs.clusterCompareGallery.innerHTML = '';
+        return;
+    }
+
+    refs.clusterCompare.classList.remove('hidden');
+    refs.clusterCompareSummary.innerHTML = `
+        <div class="cluster-compare__summary-head">
+            <div class="cluster-compare__summary-title">已选择 ${selected.length} 个类簇</div>
+            <button class="ghost-btn cluster-compare__clear" id="clearCompareBtn">清空对比</button>
         </div>
-        <div class="artifact-card">
-            <div>样本距离热图</div>
-            <a href="${payload.cluster.artifacts.heatmap}" target="_blank"><img src="${payload.cluster.artifacts.heatmap}" alt="sample heatmap"></a>
+        <div class="cluster-compare__summary-pills">
+            ${selected.map(item => `
+                <button class="cluster-compare__pill" data-cluster-id="${item.cluster_id}">第 ${item.cluster_id + 1} 类 · ${item.sample_count} 个样本 <span class="cluster-compare__pill-close" aria-hidden="true">×</span></button>
+            `).join('')}
         </div>
-        <div class="artifact-card">
-            <div>层次聚类树状图</div>
-            <a href="${payload.cluster.artifacts.dendrogram}" target="_blank"><img src="${payload.cluster.artifacts.dendrogram}" alt="cluster dendrogram"></a>
+    `;
+
+    refs.clusterCompareSummary.querySelectorAll('.cluster-compare__pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            const clusterId = Number.parseInt(pill.dataset.clusterId, 10);
+            toggleClusterComparison(clusterId);
+        });
+    });
+    const clearBtn = document.getElementById('clearCompareBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            state.comparisonClusterIds = [];
+            renderBatch(state.batchResult);
+        });
+    }
+
+    if (selected.length < 2) {
+        refs.clusterCompareChart.innerHTML = '<div class="compare-empty">至少选择 2 个类簇后展示多类对比图表。</div>';
+        refs.clusterCompareGallery.innerHTML = '';
+        return;
+    }
+
+    const spikeletMetrics = [
+        { key: 'mean_spikelet_length_mm', label: '平均小穗长度', unit: 'mm', group: '小穗级均值', groupClass: 'spikelet' },
+        { key: 'mean_spikelet_width_mm', label: '平均小穗宽度', unit: 'mm', group: '小穗级均值', groupClass: 'spikelet' },
+        { key: 'mean_aspect_ratio', label: '平均小穗长宽比', unit: '', group: '小穗级均值', groupClass: 'spikelet' },
+        { key: 'mean_attachment_angle', label: '平均着生角', unit: '°', group: '小穗级均值', groupClass: 'spikelet' },
+    ];
+    const earMetrics = [
+        { key: 'mean_spike_length_cm', label: '穗长', unit: 'cm', group: '穗级指标', groupClass: 'ear' },
+        { key: 'spikelet_count', label: '小穗数', unit: '', group: '穗级指标', groupClass: 'ear' },
+        { key: 'spikelet_density', label: '着生密度', unit: '', group: '穗级指标', groupClass: 'ear' },
+        { key: 'mean_asymmetry_index', label: '对称度', unit: '', group: '穗级指标', groupClass: 'ear' },
+        { key: 'mean_centroid_offset', label: '重心偏移度', unit: '', group: '穗级指标', groupClass: 'ear' },
+    ];
+    const metrics = [...spikeletMetrics, ...earMetrics];
+
+    refs.clusterCompareChart.innerHTML = `
+        <div class="compare-radar-grid">
+            <div class="compare-radar-shell">
+                <div class="compare-radar__title">雷达图 • 小穗级均值</div>
+                ${renderClusterRadar(selected, spikeletMetrics)}
+            </div>
+            <div class="compare-radar-shell">
+                <div class="compare-radar__title">雷达图 • 穗级指标</div>
+                ${renderClusterRadar(selected, earMetrics)}
+            </div>
         </div>
-        <div class="artifact-card">
-            <div><a href="${payload.cluster.artifacts.labels_csv}" target="_blank">下载聚类标签 CSV</a></div>
-            <div style="margin-top:10px;"><a href="${payload.cluster.artifacts.centers_csv}" target="_blank">下载聚类中心 CSV</a></div>
+        <div class="compare-bars-shell">
+            <div class="compare-bars-shell__title">柱状图</div>
+            <div class="compare-bars-grid">
+                ${metrics.map(metric => {
+                    const values = selected.map(item => Number(item.aggregate_metrics?.[metric.key] ?? 0));
+                    const maxValue = Math.max(...values, 1e-6);
+                    return `
+                        <div class="compare-metric compare-metric--compact">
+                            <div class="compare-metric__head">
+                                <div class="compare-metric__title">${metric.label}</div>
+                                <div class="compare-metric__group compare-metric__group--${metric.groupClass}">${metric.group}</div>
+                            </div>
+                            ${selected.map(item => {
+                                const value = Number(item.aggregate_metrics?.[metric.key] ?? 0);
+                                return `
+                                    <div class="compare-bar">
+                                        <div class="compare-bar__label"><i class="compare-bar__dot" style="background:${clusterColor(item.cluster_id)}"></i>第 ${item.cluster_id + 1} 类</div>
+                                        <div class="compare-bar__track">
+                                            <span style="width:${(value / maxValue) * 100}%"></span>
+                                        </div>
+                                        <div class="compare-bar__value">${formatClusterMetric(value, metric.unit)}</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+
+    refs.clusterCompareGallery.innerHTML = '';
+}
+
+function renderClusterRadar(selected, metrics) {
+    const width = 360;
+    const height = 320;
+    const cx = width / 2;
+    const cy = height / 2;
+    const radius = 108;
+    const rings = [0.25, 0.5, 0.75, 1];
+    const angleStep = (Math.PI * 2) / metrics.length;
+    const series = selected.map(item => {
+        const points = metrics.map((metric, index) => {
+            const maxValue = Math.max(...selected.map(target => Number(target.aggregate_metrics?.[metric.key] ?? 0)), 1e-6);
+            const value = Number(item.aggregate_metrics?.[metric.key] ?? 0) / maxValue;
+            const angle = -Math.PI / 2 + angleStep * index;
+            const px = cx + Math.cos(angle) * radius * value;
+            const py = cy + Math.sin(angle) * radius * value;
+            return `${px},${py}`;
+        });
+        return {
+            clusterId: item.cluster_id,
+            color: clusterColor(item.cluster_id),
+            points: points.join(' '),
+        };
+    });
+
+    return `
+        <svg class="compare-radar" viewBox="0 0 ${width} ${height}">
+            ${rings.map(ratio => `
+                <polygon
+                    class="compare-radar__ring"
+                    points="${metrics.map((metric, index) => {
+                        const angle = -Math.PI / 2 + angleStep * index;
+                        const px = cx + Math.cos(angle) * radius * ratio;
+                        const py = cy + Math.sin(angle) * radius * ratio;
+                        return `${px},${py}`;
+                    }).join(' ')}"
+                ></polygon>
+            `).join('')}
+            ${metrics.map((metric, index) => {
+                const angle = -Math.PI / 2 + angleStep * index;
+                const px = cx + Math.cos(angle) * radius;
+                const py = cy + Math.sin(angle) * radius;
+                const lx = cx + Math.cos(angle) * (radius + 26);
+                const ly = cy + Math.sin(angle) * (radius + 20);
+                return `
+                    <line class="compare-radar__axis" x1="${cx}" y1="${cy}" x2="${px}" y2="${py}"></line>
+                    <text class="compare-radar__label" x="${lx}" y="${ly}" text-anchor="middle">${metric.label}</text>
+                `;
+            }).join('')}
+            ${series.map(item => `
+                <polygon
+                    class="compare-radar__shape"
+                    points="${item.points}"
+                    fill="${item.color}22"
+                    stroke="${item.color}"
+                ></polygon>
+            `).join('')}
+        </svg>
+        <div class="compare-radar__legend">
+            ${selected.map(item => `<span><i style="background:${clusterColor(item.cluster_id)}"></i>第 ${item.cluster_id + 1} 类</span>`).join('')}
         </div>
     `;
 }
@@ -1003,3 +1526,474 @@ function clusterColor(label) {
     const palette = ['#3cf2ff', '#78ffb8', '#ffbb54', '#ff7d92', '#a48cff', '#7ce0ff'];
     return palette[(label ?? 0) % palette.length];
 }
+
+function buildResultMap(results) {
+    return Object.fromEntries(results.map(item => [item.image_name || item.filename, item]));
+}
+
+function getClusterMetricOptions(cluster) {
+    const preferredMetrics = [
+        { key: 'mean_spikelet_length_mm', label: '平均小穗长度', group: 'spikelet', groupLabel: '小穗级均值' },
+        { key: 'mean_spikelet_width_mm', label: '平均小穗宽度', group: 'spikelet', groupLabel: '小穗级均值' },
+        { key: 'mean_aspect_ratio', label: '平均小穗长宽比', group: 'spikelet', groupLabel: '小穗级均值' },
+        { key: 'mean_attachment_angle', label: '平均着生角', group: 'spikelet', groupLabel: '小穗级均值' },
+        { key: 'mean_spike_length_cm', label: '穗长', group: 'ear', groupLabel: '穗级指标' },
+        { key: 'spikelet_count', label: '小穗数', group: 'ear', groupLabel: '穗级指标' },
+        { key: 'spikelet_density', label: '着生密度', group: 'ear', groupLabel: '穗级指标' },
+        { key: 'mean_asymmetry_index', label: '对称度', group: 'ear', groupLabel: '穗级指标' },
+        { key: 'mean_centroid_offset', label: '重心偏移度', group: 'ear', groupLabel: '穗级指标' },
+    ];
+    const availableMetrics = cluster?.clusters?.[0]?.aggregate_metrics || {};
+    return preferredMetrics.filter(metric => Object.prototype.hasOwnProperty.call(availableMetrics, metric.key));
+}
+
+function renderMetricCascadeControls() {
+    refs.clusterSortMenu.innerHTML = buildMetricCascadeMenuHtml('sort', state.batchSortMetric);
+    refs.clusterFilterMenu.innerHTML = buildMetricCascadeMenuHtml('filter', state.batchFilterMetric);
+    updateMetricCascadeTriggerLabel('sort');
+    updateMetricCascadeTriggerLabel('filter');
+}
+
+function buildMetricCascadeMenuHtml(target, selectedMetricKey) {
+    const groups = [];
+    const seen = new Set();
+    state.clusterMetricOptions.forEach(metric => {
+        if (!seen.has(metric.group)) {
+            seen.add(metric.group);
+            groups.push(metric.group);
+        }
+    });
+
+    return groups.map(group => {
+        const groupMetrics = state.clusterMetricOptions.filter(metric => metric.group === group);
+        const groupLabel = groupMetrics[0]?.groupLabel || group;
+        const hasSelected = groupMetrics.some(metric => metric.key === selectedMetricKey);
+        return `
+            <div class="cascade-menu__group ${hasSelected ? 'is-current' : ''}">
+                <button type="button" class="cascade-menu__group-btn">${groupLabel}</button>
+                <div class="cascade-menu__submenu">
+                    ${groupMetrics.map(metric => `
+                        <button
+                            type="button"
+                            class="cascade-menu__item ${metric.key === selectedMetricKey ? 'is-selected' : ''}"
+                            data-target="${target}"
+                            data-metric-key="${metric.key}"
+                        >
+                            ${metric.label}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function handleMetricCascadeSelect(event, target) {
+    const item = event.target.closest('.cascade-menu__item');
+    if (!item) {
+        return false;
+    }
+    const metricKey = item.dataset.metricKey;
+    if (!metricKey) {
+        return false;
+    }
+    if (target === 'sort') {
+        state.batchSortMetric = metricKey;
+    } else {
+        state.batchFilterMetric = metricKey;
+    }
+    renderMetricCascadeControls();
+    closeMetricCascadeMenus();
+    return true;
+}
+
+function updateMetricCascadeTriggerLabel(target) {
+    const metricKey = target === 'sort' ? state.batchSortMetric : state.batchFilterMetric;
+    const metric = state.clusterMetricOptions.find(item => item.key === metricKey);
+    const trigger = target === 'sort' ? refs.clusterSortTrigger : refs.clusterFilterTrigger;
+    const prefix = target === 'sort' ? '排序' : '筛选';
+    const groupLabel = metric?.groupLabel || '未选择分组';
+    const label = metric?.label || '请选择指标';
+    trigger.innerHTML = `
+        <span class="cascade-select__prefix">${prefix}</span>
+        <span class="cascade-select__value">${groupLabel} / ${label}</span>
+        <span class="cascade-select__chevron">▾</span>
+    `;
+}
+
+function toggleMetricCascadeMenu(target) {
+    const menu = target === 'sort' ? refs.clusterSortMenu : refs.clusterFilterMenu;
+    const otherMenu = target === 'sort' ? refs.clusterFilterMenu : refs.clusterSortMenu;
+    const shouldOpen = menu.classList.contains('hidden');
+    otherMenu.classList.add('hidden');
+    menu.classList.toggle('hidden', !shouldOpen);
+}
+
+function closeMetricCascadeMenus() {
+    refs.clusterSortMenu.classList.add('hidden');
+    refs.clusterFilterMenu.classList.add('hidden');
+}
+
+function getMetricLabel(key) {
+    const labelMap = {
+        spikelet_count: '小穗数',
+        mean_spikelet_length: '平均小穗长度',
+        mean_spikelet_width: '平均小穗宽度',
+        mean_aspect_ratio: '平均长宽比',
+        mean_attachment_angle: '平均着生角',
+        spike_length: '穗长',
+        spikelet_density: '小穗密度',
+        asymmetry_index: '对称度',
+        centroid_offset: '重心偏移度',
+        spike_length_cm: '穗长',
+        mean_spike_length_cm: '平均穗长',
+        mean_spikelet_length_mm: '平均小穗长度',
+        mean_spikelet_width_mm: '平均小穗宽度',
+        mean_asymmetry_index: '平均对称度',
+        mean_centroid_offset: '平均重心偏移度',
+    };
+    return labelMap[key] || null;
+}
+
+function getVisibleClusters(cluster) {
+    const clusters = [...(cluster?.clusters || [])];
+    const metric = state.batchSortMetric;
+    const filterMetric = state.batchFilterMetric;
+    const threshold = Number.parseFloat(state.batchFilterValue);
+    const hasThreshold = Number.isFinite(threshold);
+
+    const decorated = clusters.map(item => {
+        const value = Number(item.aggregate_metrics?.[filterMetric]);
+        const matched = !hasThreshold || (Number.isFinite(value) && value >= threshold);
+        return { ...item, __matched: matched };
+    });
+
+    decorated.sort((left, right) => Number(right.aggregate_metrics?.[metric] ?? -Infinity) - Number(left.aggregate_metrics?.[metric] ?? -Infinity));
+    return state.batchHideUnmatched ? decorated.filter(item => item.__matched) : decorated;
+}
+
+function formatClusterMetric(value, unit = '') {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) {
+        return 'N/A';
+    }
+    return `${Number(value).toFixed(2)}${unit ? ` ${unit}` : ''}`;
+}
+
+function buildNineSampleMetricRows(ear) {
+    const safeEar = ear || {};
+    return [
+        { group: '小穗级均值', label: '平均小穗长度', value: formatMetric(safeEar.mean_spikelet_length_mm, 'mm', safeEar.mean_spikelet_length ?? 0, 'px') },
+        { group: '小穗级均值', label: '平均小穗宽度', value: formatMetric(safeEar.mean_spikelet_width_mm, 'mm', safeEar.mean_spikelet_width ?? 0, 'px') },
+        { group: '小穗级均值', label: '平均小穗长宽比', value: Number(safeEar.mean_aspect_ratio ?? 0).toFixed(3) },
+        { group: '小穗级均值', label: '平均着生角', value: `${Number(safeEar.mean_attachment_angle ?? 0).toFixed(2)} °` },
+        { group: '穗级指标', label: '穗长', value: formatMetric(safeEar.spike_length_cm, 'cm', safeEar.spike_length_px ?? 0, 'px') },
+        { group: '穗级指标', label: '小穗数', value: String(Math.round(Number(safeEar.spikelet_count ?? 0))) },
+        { group: '穗级指标', label: '着生密度', value: formatMetric(safeEar.spikelet_density_per_cm, '/cm', safeEar.spikelet_density_px ?? 0, '/px') },
+        { group: '穗级指标', label: '对称度', value: Number(safeEar.asymmetry_index ?? 0).toFixed(4) },
+        { group: '穗级指标', label: '重心偏移度', value: Number(safeEar.centroid_offset ?? 0).toFixed(4) },
+    ];
+}
+
+function buildNineClusterMetricRows(clusterItem) {
+    const metrics = clusterItem?.aggregate_metrics || {};
+    return [
+        { group: '小穗级均值', label: '平均小穗长度', value: formatClusterMetric(metrics.mean_spikelet_length_mm, 'mm') },
+        { group: '小穗级均值', label: '平均小穗宽度', value: formatClusterMetric(metrics.mean_spikelet_width_mm, 'mm') },
+        { group: '小穗级均值', label: '平均小穗长宽比', value: formatClusterMetric(metrics.mean_aspect_ratio, '') },
+        { group: '小穗级均值', label: '平均着生角', value: formatClusterMetric(metrics.mean_attachment_angle, '°') },
+        { group: '穗级指标', label: '穗长', value: formatClusterMetric(metrics.mean_spike_length_cm, 'cm') },
+        { group: '穗级指标', label: '小穗数', value: formatClusterMetric(metrics.spikelet_count, '') },
+        { group: '穗级指标', label: '着生密度', value: formatClusterMetric(metrics.spikelet_density, '') },
+        { group: '穗级指标', label: '对称度', value: formatClusterMetric(metrics.mean_asymmetry_index, '') },
+        { group: '穗级指标', label: '重心偏移度', value: formatClusterMetric(metrics.mean_centroid_offset, '') },
+    ];
+}
+
+function renderGroupedMetricCards(rows) {
+    const spikeletRows = rows.filter(item => item.group === '小穗级均值');
+    const earRows = rows.filter(item => item.group === '穗级指标');
+    const renderSection = (title, groupClass, items) => `
+        <section class="cluster-modal__section cluster-modal__section--${groupClass}">
+            <h4>${title}</h4>
+            <div class="cluster-modal__metrics-grid">
+                ${items.map(item => `
+                    <div class="cluster-modal__metric-card">
+                        <div class="cluster-modal__metric-label">${item.label}</div>
+                        <div class="cluster-modal__metric-value">${item.value}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </section>
+    `;
+
+    return `${renderSection('小穗级均值', 'spikelet', spikeletRows)}${renderSection('穗级指标', 'ear', earRows)}`;
+}
+
+function renderHoverMetricRows(rows) {
+    return rows.map(item => `
+        <div class="cluster-hover-card__kv">
+            <span class="cluster-hover-card__kv-label">${item.label}</span>
+            <strong class="cluster-hover-card__kv-value">${item.value}</strong>
+        </div>
+    `).join('');
+}
+
+function showClusterHoverCardForSample(event, result, clusterLabel, options = {}) {
+    if (!result) {
+        hideClusterHoverCard();
+        return;
+    }
+    const rows = buildNineSampleMetricRows(result.ear_pheno || {});
+    const spikeletRows = rows.filter(item => item.group === '小穗级均值');
+    const earRows = rows.filter(item => item.group === '穗级指标');
+    const showImage = options.showImage !== false;
+    const imageUrl = result.images?.original || result.images?.analysis || '';
+
+    const displayClusterLabel = Number.isFinite(Number(clusterLabel)) ? Number(clusterLabel) + 1 : (clusterLabel ?? '-');
+    if (showImage && imageUrl) {
+        refs.clusterHoverCard.innerHTML = `
+            <div class="cluster-hover-card__layout">
+                <div class="cluster-hover-card__body cluster-hover-card__body--metrics-only">
+                    <h4>${result.image_name || result.filename}</h4>
+                    <p>Cluster ${displayClusterLabel}</p>
+                    <div class="cluster-hover-card__group">小穗级均值</div>
+                    ${renderHoverMetricRows(spikeletRows)}
+                    <div class="cluster-hover-card__group">穗级指标</div>
+                    ${renderHoverMetricRows(earRows)}
+                </div>
+                <div class="cluster-hover-card__image-wrap"><img class="cluster-hover-card__image" src="${imageUrl}" alt="${result.image_name || result.filename}"></div>
+            </div>
+        `;
+        refs.clusterHoverCard.classList.add('cluster-hover-card--with-image');
+    } else {
+        refs.clusterHoverCard.innerHTML = `
+            <div class="cluster-hover-card__body cluster-hover-card__body--metrics-only">
+                <h4>${result.image_name || result.filename}</h4>
+                <p>Cluster ${displayClusterLabel}</p>
+                <div class="cluster-hover-card__group">小穗级均值</div>
+                ${renderHoverMetricRows(spikeletRows)}
+                <div class="cluster-hover-card__group">穗级指标</div>
+                ${renderHoverMetricRows(earRows)}
+            </div>
+        `;
+        refs.clusterHoverCard.classList.remove('cluster-hover-card--with-image');
+    }
+    moveClusterHoverCard(event);
+    refs.clusterHoverCard.classList.remove('hidden');
+}
+
+function showClusterHoverCardForCluster(event, clusterItem) {
+    if (!clusterItem) {
+        hideClusterHoverCard();
+        return;
+    }
+
+    const rows = buildNineClusterMetricRows(clusterItem);
+    const spikeletRows = rows.filter(item => item.group === '小穗级均值');
+    const earRows = rows.filter(item => item.group === '穗级指标');
+
+    refs.clusterHoverCard.innerHTML = `
+        <div class="cluster-hover-card__body cluster-hover-card__body--metrics-only">
+            <h4>第 ${clusterItem.cluster_id + 1} 类</h4>
+            <p>样本数：${clusterItem.sample_count}</p>
+            <div class="cluster-hover-card__group">小穗级均值</div>
+            ${renderHoverMetricRows(spikeletRows)}
+            <div class="cluster-hover-card__group">穗级指标</div>
+            ${renderHoverMetricRows(earRows)}
+        </div>
+    `;
+    refs.clusterHoverCard.classList.remove('cluster-hover-card--with-image');
+    moveClusterHoverCard(event);
+    refs.clusterHoverCard.classList.remove('hidden');
+}
+
+function showClusterHoverCardForDendrogramNode(event, cluster, nodeId) {
+    const node = cluster?.dendrogram?.nodes?.find(item => item.id === nodeId);
+    if (!node || !node.sample_names?.length) {
+        hideClusterHoverCard();
+        return;
+    }
+    const resultMap = buildResultMap(state.batchResult?.results || []);
+    const sample = resultMap[node.sample_names[0]];
+    if (!sample) {
+        hideClusterHoverCard();
+        return;
+    }
+    const extra = node.sample_names.length > 1 ? ` +${node.sample_names.length - 1} 个样本` : '';
+    const rows = buildNineSampleMetricRows(sample.ear_pheno || {});
+    const spikeletRows = rows.filter(item => item.group === '小穗级均值');
+    const earRows = rows.filter(item => item.group === '穗级指标');
+    const imageUrl = sample.images?.original || sample.images?.analysis || '';
+    refs.clusterHoverCard.innerHTML = `
+        <div class="cluster-hover-card__layout">
+            <div class="cluster-hover-card__body cluster-hover-card__body--metrics-only">
+                <h4>${sample.image_name || sample.filename}${extra}</h4>
+                <p>树节点覆盖 ${node.sample_names.length} 个样本</p>
+                <div class="cluster-hover-card__group">小穗级均值</div>
+                ${renderHoverMetricRows(spikeletRows)}
+                <div class="cluster-hover-card__group">穗级指标</div>
+                ${renderHoverMetricRows(earRows)}
+            </div>
+            ${imageUrl ? `<div class="cluster-hover-card__image-wrap"><img class="cluster-hover-card__image" src="${imageUrl}" alt="${sample.image_name || sample.filename}"></div>` : ''}
+        </div>
+    `;
+    refs.clusterHoverCard.classList.add('cluster-hover-card--with-image');
+    moveClusterHoverCard(event);
+    refs.clusterHoverCard.classList.remove('hidden');
+}
+
+function moveClusterHoverCard(event) {
+    const cardWidth = refs.clusterHoverCard.offsetWidth || 300;
+    const cardHeight = refs.clusterHoverCard.offsetHeight || 220;
+    const x = Math.min(window.innerWidth - cardWidth - 16, event.clientX + 18);
+    const y = Math.min(window.innerHeight - cardHeight - 16, event.clientY + 18);
+    refs.clusterHoverCard.style.left = `${Math.max(16, x)}px`;
+    refs.clusterHoverCard.style.top = `${Math.max(16, y)}px`;
+}
+
+function hideClusterHoverCard() {
+    refs.clusterHoverCard.classList.remove('cluster-hover-card--with-image');
+    refs.clusterHoverCard.classList.add('hidden');
+}
+
+function getPointStateClass(filename, clusterId) {
+    const activeNames = new Set(getSampleNamesForHoveredDendrogramNode(state.batchResult?.cluster));
+    const isActiveSample = filename === state.hoveredSampleName || filename === state.selectedSampleName || activeNames.has(filename);
+    const isActiveCluster = clusterId === state.hoveredClusterId || clusterId === state.selectedClusterId;
+    if (isActiveSample) {
+        return 'is-active';
+    }
+    if (isActiveCluster) {
+        return 'is-cluster-active';
+    }
+    return '';
+}
+
+function getPointRadius(filename) {
+    return (filename === state.hoveredSampleName || filename === state.selectedSampleName) ? 12 : 8;
+}
+
+function getSampleNamesForHoveredDendrogramNode(cluster) {
+    const nodeId = state.hoveredDendrogramNodeId;
+    if (nodeId === null || nodeId === undefined) {
+        return [];
+    }
+    const node = cluster?.dendrogram?.nodes?.find(item => item.id === nodeId);
+    return node?.sample_names || [];
+}
+
+function getDendrogramNodeState(node) {
+    const activeNames = new Set(getSampleNamesForHoveredDendrogramNode(state.batchResult?.cluster));
+    const clusterNames = new Set((state.batchResult?.cluster?.clusters || [])
+        .find(item => item.cluster_id === (state.hoveredClusterId ?? state.selectedClusterId))?.sample_names || []);
+    const nodeNames = new Set(node.sample_names || []);
+    const isDendrogramActive = node.id === state.hoveredDendrogramNodeId;
+    const overlapsHovered = [...nodeNames].some(name => activeNames.has(name));
+    const overlapsCluster = [...nodeNames].some(name => clusterNames.has(name));
+    if (isDendrogramActive || overlapsHovered) {
+        return 'is-active';
+    }
+    if (overlapsCluster) {
+        return 'is-cluster-active';
+    }
+    return '';
+}
+
+function isDendrogramLinkActive(link, data) {
+    const activeNames = getActiveDendrogramNames(data);
+    if (!activeNames.size) {
+        return false;
+    }
+    const child = data.nodes.find(item => item.id === link.child);
+    return (child?.sample_names || []).some(name => activeNames.has(name));
+}
+
+function getActiveDendrogramNames(data) {
+    const names = new Set();
+
+    if (state.hoveredSampleName) {
+        names.add(state.hoveredSampleName);
+    }
+    if (state.selectedSampleName) {
+        names.add(state.selectedSampleName);
+    }
+
+    const hoveredNode = data?.nodes?.find(item => item.id === state.hoveredDendrogramNodeId);
+    (hoveredNode?.sample_names || []).forEach(name => names.add(name));
+
+    const activeClusterId = state.hoveredClusterId ?? state.selectedClusterId;
+    const activeCluster = (state.batchResult?.cluster?.clusters || []).find(item => item.cluster_id === activeClusterId);
+    (activeCluster?.sample_names || []).forEach(name => names.add(name));
+
+    return names;
+}
+
+function refreshDendrogramHighlight(data) {
+    if (!refs.clusterDendrogram || !data?.nodes) {
+        return;
+    }
+    refs.clusterDendrogram.querySelectorAll('.dendrogram-link').forEach((element, index) => {
+        const link = data?.links?.[index];
+        element.classList.toggle('is-active', Boolean(link) && isDendrogramLinkActive(link, data));
+    });
+    refs.clusterDendrogram.querySelectorAll('.dendrogram-node').forEach(nodeElement => {
+        const nodeId = Number.parseInt(nodeElement.dataset.nodeId, 10);
+        const node = data.nodes.find(item => item.id === nodeId);
+        const stateClass = node ? getDendrogramNodeState(node) : '';
+        nodeElement.classList.remove('is-active', 'is-cluster-active');
+        if (stateClass) {
+            nodeElement.classList.add(stateClass);
+        }
+    });
+}
+
+function openClusterModal(clusterId) {
+    const cluster = state.batchResult?.cluster?.clusters?.find(item => item.cluster_id === clusterId);
+    if (!cluster) {
+        return;
+    }
+    state.selectedClusterId = clusterId;
+    refs.clusterModalTitle.textContent = `第 ${clusterId + 1} 类详情`;
+    refs.clusterModalSummary.innerHTML = renderGroupedMetricCards(buildNineClusterMetricRows(cluster));
+    refs.clusterModalGrid.innerHTML = cluster.samples.map(sample => `
+        <button class="cluster-thumb" data-sample-name="${sample.image_name || sample.filename}" data-image-url="${sample.images?.original || sample.images?.analysis || ''}">
+            <img src="${sample.images?.analysis || sample.images?.original || ''}" alt="${sample.image_name || sample.filename}">
+            <span>${sample.image_name || sample.filename}</span>
+        </button>
+    `).join('');
+    refs.clusterModalGrid.querySelectorAll('.cluster-thumb').forEach(button => {
+        const sampleName = button.dataset.sampleName;
+        button.addEventListener('mouseenter', () => {
+            state.hoveredSampleName = sampleName;
+            syncBatchDetail(state.batchResult.cluster, state.batchResult.results);
+            renderBatch(state.batchResult);
+        });
+        button.addEventListener('mousemove', (event) => {
+            const resultMap = buildResultMap(state.batchResult?.results || []);
+            const sample = resultMap[sampleName];
+            const labelMap = buildLabelMap(state.batchResult?.cluster);
+            showClusterHoverCardForSample(event, sample, labelMap[sampleName], { showImage: false });
+        });
+        button.addEventListener('mouseleave', () => {
+            state.hoveredSampleName = null;
+            syncBatchDetail(state.batchResult.cluster, state.batchResult.results);
+            hideClusterHoverCard();
+            renderBatch(state.batchResult);
+        });
+        button.addEventListener('click', () => {
+            openImagePreview(sampleName, button.dataset.imageUrl);
+        });
+    });
+    refs.clusterModal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    renderBatch(state.batchResult);
+}
+
+function closeClusterModal() {
+    refs.clusterModal.classList.add('hidden');
+    hideClusterHoverCard();
+    if (!refs.previewModal || refs.previewModal.classList.contains('hidden')) {
+        document.body.classList.remove('modal-open');
+    }
+}
+

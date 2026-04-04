@@ -154,7 +154,7 @@ class BatchImagePipeline(_BasePipeline):
             calibrator=self.calibrator,
         )
 
-    def analyze_paths(self, image_paths: list[str], output_dir: str | None = None) -> dict:
+    def analyze_paths(self, image_paths: list[str], output_dir: str | None = None, progress_callback=None) -> dict:
         """
         对一批已知路径的图片进行分析，并在样本数足够时执行聚类。
         """
@@ -167,7 +167,16 @@ class BatchImagePipeline(_BasePipeline):
         if output_path is not None:
             output_path.mkdir(parents=True, exist_ok=True)
 
+        total = len(image_paths)
+
         for idx, image_path in enumerate(image_paths):
+            if progress_callback:
+                progress_callback({
+                    'stage': 'analyzing',
+                    'current': idx,
+                    'total': total,
+                    'current_file': Path(image_path).name,
+                })
             print(f"[{idx + 1}/{len(image_paths)}] 正在分析: {Path(image_path).name}")
             result = self.single_pipeline.analyze(image_path, str(output_path) if output_path else None)
             results.append(result)
@@ -182,6 +191,8 @@ class BatchImagePipeline(_BasePipeline):
                 'image': image_name,
                 'feature_names': result['feature_names'],
                 'features': result['feature_vector'],
+                'ear_pheno': result['ear_pheno'],
+                'image_path': image_path,
             })
 
         cluster_result = None
@@ -189,7 +200,22 @@ class BatchImagePipeline(_BasePipeline):
             self._write_dict_csv(output_path / "phenotype_results.csv", phenotype_rows)
             self._write_dict_csv(output_path / "feature_vectors.csv", feature_rows)
         if len(samples) >= 2 and output_path is not None:
+            if progress_callback:
+                progress_callback({
+                    'stage': 'clustering',
+                    'current': total,
+                    'total': total,
+                    'current_file': None,
+                })
             cluster_result = self.cluster_analyzer.cluster(samples, str(output_path))
+
+        if progress_callback:
+            progress_callback({
+                'stage': 'completed',
+                'current': total,
+                'total': total,
+                'current_file': None,
+            })
 
         return {
             'results': results,
