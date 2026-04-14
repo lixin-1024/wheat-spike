@@ -21,6 +21,7 @@ class SkeletonBuilder:
             dict: {
                 'spikelet_highest_points': np.ndarray (N, 2),
                 'spikelet_lowest_points': np.ndarray (N, 2),
+                'spikelet_stem_points': np.ndarray (N, 2),
                 'spikelet_axis_dirs': np.ndarray (N, 2),
                 'spikelet_tangent': np.ndarray (N, 2),
                 'spikelet_s': np.ndarray (N,),
@@ -28,6 +29,11 @@ class SkeletonBuilder:
                 'spikelet_order': np.ndarray (N,),
                 'stem_points': np.ndarray (M, 2),
                 'stem_length': float,
+                'abstract_stem_start': np.ndarray (2,),
+                'abstract_stem_end': np.ndarray (2,),
+                'abstract_stem_vector': np.ndarray (2,),
+                'abstract_stem_length': float,
+                'abstract_stem_angle_deg': float,
             }
         """
         centers = np.asarray(detection['centers'], dtype=float)
@@ -86,6 +92,7 @@ class SkeletonBuilder:
         spikelet_s = np.zeros(count, dtype=float)
         spikelet_tangent = np.zeros((count, 2), dtype=float)
         spikelet_side = np.zeros(count, dtype=float)
+        spikelet_stem_points = np.zeros((count, 2), dtype=float)
 
         original_t = np.zeros(count, dtype=float)
         original_t[order] = t
@@ -93,6 +100,7 @@ class SkeletonBuilder:
 
         for idx in range(count):
             t_base = float(original_t[idx])
+            spikelet_stem_points[idx] = np.array([float(spline_x(t_base)), float(spline_y(t_base))], dtype=float)
             tx = float(spline_x.derivative()(t_base))
             ty = float(spline_y.derivative()(t_base))
             tangent = np.array([tx, ty], dtype=float)
@@ -107,9 +115,16 @@ class SkeletonBuilder:
             cross = tangent[0] * axis_dir[1] - tangent[1] * axis_dir[0]
             spikelet_side[idx] = 1.0 if cross >= 0 else -1.0
 
+        abstract_stem_start = stem_points[0].astype(float)
+        abstract_stem_end = stem_points[-1].astype(float)
+        abstract_stem_vector = abstract_stem_end - abstract_stem_start
+        abstract_stem_length = float(np.linalg.norm(abstract_stem_vector))
+        abstract_stem_angle_deg = float(np.degrees(np.arctan2(abstract_stem_vector[1], abstract_stem_vector[0])))
+
         return {
             'spikelet_highest_points': highest_points,
             'spikelet_lowest_points': lowest_points,
+            'spikelet_stem_points': spikelet_stem_points,
             'spikelet_axis_dirs': axis_dirs,
             'spikelet_tangent': spikelet_tangent,
             'spikelet_s': spikelet_s,
@@ -118,6 +133,11 @@ class SkeletonBuilder:
             'stem_points': stem_points,
             'stem_length': stem_length,
             'stem_fit_points': stem_fit_points,
+            'abstract_stem_start': abstract_stem_start,
+            'abstract_stem_end': abstract_stem_end,
+            'abstract_stem_vector': abstract_stem_vector,
+            'abstract_stem_length': abstract_stem_length,
+            'abstract_stem_angle_deg': abstract_stem_angle_deg,
         }
 
     def _extract_spikelet_axes(self, centers: np.ndarray, xyxyxyxy: np.ndarray):

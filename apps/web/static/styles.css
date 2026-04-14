@@ -744,6 +744,11 @@ body::after {
     text-overflow: clip;
 }
 
+.status-card--success .status-card__text {
+    overflow: visible;
+    text-overflow: clip;
+}
+
 .status-card--running .status-card__level,
 .status-card--running .status-card__mode {
     border-color: rgba(160, 178, 255, 0.48);
@@ -825,6 +830,21 @@ body::after {
     font-weight: 700;
     letter-spacing: 0.02em;
     box-shadow: 0 8px 20px rgba(49, 154, 208, 0.26);
+}
+
+.status-run-btn--export {
+    border-color: rgba(134, 255, 190, 0.56);
+    color: #05291c;
+    background: linear-gradient(135deg, #65f7b2, #87ff9e);
+    box-shadow: 0 8px 20px rgba(53, 187, 120, 0.3);
+}
+
+.status-run-btn--export .status-run-btn__shine {
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0) 18%, rgba(245, 255, 250, 0.56) 44%, rgba(255, 255, 255, 0) 66%);
+}
+
+.status-run-btn--export:hover:not(:disabled) {
+    box-shadow: 0 12px 28px rgba(53, 187, 120, 0.4);
 }
 
 @keyframes runBtnShine {
@@ -1215,6 +1235,13 @@ body.modal-open {
     opacity: 0.96;
 }
 
+.skeleton-path--abstract {
+    stroke: rgba(84, 255, 148, 0.9);
+    stroke-width: 4.2;
+    stroke-dasharray: 14 10;
+    opacity: 0.82;
+}
+
 .skeleton-path--branch {
     stroke: rgba(174, 240, 255, 0.78);
     stroke-width: 4.1;
@@ -1242,6 +1269,10 @@ body.modal-open {
     stroke: rgba(186, 255, 206, 0.98);
 }
 
+.skeleton-path--abstract.is-active {
+    stroke: rgba(176, 255, 206, 0.98);
+}
+
 .skeleton-path--glow.is-active {
     opacity: 0.88;
     stroke: rgba(174, 246, 255, 0.9);
@@ -1258,9 +1289,16 @@ body.modal-open {
     stroke: rgba(96, 255, 154, 0.94);
 }
 
+.skeleton-path--abstract.skeleton-path--glow.is-active {
+    stroke: rgba(112, 255, 168, 0.96);
+    stroke-width: 6.8;
+}
+
 .skeleton-node {
-    fill: rgba(212, 249, 255, 0.88);
-    opacity: 0.34;
+    fill: rgba(212, 249, 255, 0.92);
+    stroke: rgba(7, 17, 28, 0.9);
+    stroke-width: 1.6;
+    opacity: 0.8;
     pointer-events: none;
     transition: opacity 0.2s ease, r 0.2s ease, fill 0.2s ease;
 }
@@ -1277,6 +1315,14 @@ body.modal-open {
     opacity: 0.95;
 }
 
+.skeleton-node--stem-endpoint {
+    fill: rgba(104, 255, 168, 0.95);
+}
+
+.skeleton-node--stem-match {
+    fill: rgba(255, 242, 174, 0.94);
+}
+
 .skeleton-hit {
     fill: none;
     stroke: rgba(255, 255, 255, 0.001);
@@ -1291,6 +1337,11 @@ body.modal-open {
 
 .skeleton-hit--branch {
     stroke-width: 14;
+}
+
+.skeleton-node-hit {
+    fill: rgba(255, 255, 255, 0.001);
+    pointer-events: all;
 }
 
 @keyframes skeletonFlow {

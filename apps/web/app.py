@@ -94,12 +94,18 @@ def serialize_skeleton_overlay(result: dict):
     centers = to_json_safe(detection.get("centers"))
     highest_points = to_json_safe(skeleton.get("spikelet_highest_points"))
     lowest_points = to_json_safe(skeleton.get("spikelet_lowest_points"))
+    stem_match_points = to_json_safe(skeleton.get("spikelet_stem_points"))
     tangents = to_json_safe(skeleton.get("spikelet_tangent"))
     sides = to_json_safe(skeleton.get("spikelet_side"))
     orders = to_json_safe(skeleton.get("spikelet_order"))
     positions = to_json_safe(skeleton.get("spikelet_s"))
     stem_points = to_json_safe(skeleton.get("stem_points"))
     stem_fit_points = to_json_safe(skeleton.get("stem_fit_points"))
+    abstract_start = to_json_safe(skeleton.get("abstract_stem_start"))
+    abstract_end = to_json_safe(skeleton.get("abstract_stem_end"))
+    abstract_vector = to_json_safe(skeleton.get("abstract_stem_vector"))
+    abstract_length = to_json_safe(skeleton.get("abstract_stem_length"))
+    abstract_angle_deg = to_json_safe(skeleton.get("abstract_stem_angle_deg"))
 
     if centers is None or highest_points is None or lowest_points is None or stem_points is None:
         return None
@@ -119,6 +125,7 @@ def serialize_skeleton_overlay(result: dict):
                 "center": center,
                 "highest_point": highest_points[index],
                 "lowest_point": lowest_points[index],
+                "stem_point": stem_match_points[index] if stem_match_points is not None else None,
                 "tangent": tangents[index] if tangents is not None else None,
                 "stem_position": positions[index] if positions is not None else None,
             }
@@ -127,6 +134,13 @@ def serialize_skeleton_overlay(result: dict):
     return {
         "stem_points": stem_points,
         "stem_fit_points": stem_fit_points,
+        "abstract_stem": {
+            "start_point": abstract_start,
+            "end_point": abstract_end,
+            "vector": abstract_vector,
+            "length_px": abstract_length,
+            "angle_deg": abstract_angle_deg,
+        },
         "spikelets": spikelets,
     }
 
@@ -232,6 +246,7 @@ def build_batch_payload(run_id: str, raw_results: list[dict], cluster_result: di
         "downloads": {
             "phenotypes_csv": f"/results/{run_id}/phenotype_results.csv",
             "features_csv": f"/results/{run_id}/feature_vectors.csv",
+            "phenotypes_xlsx": f"/results/{run_id}/phenotype_workbook.xlsx",
         },
     }
 

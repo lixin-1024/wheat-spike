@@ -127,8 +127,16 @@ class TestSkeletonBuilder(unittest.TestCase):
         skeleton = SkeletonBuilder().build(detection)
 
         self.assertIn('spikelet_tangent', skeleton)
+        self.assertIn('spikelet_stem_points', skeleton)
+        self.assertIn('abstract_stem_vector', skeleton)
         self.assertEqual(skeleton['spikelet_tangent'].shape, (4, 2))
+        self.assertEqual(skeleton['spikelet_stem_points'].shape, (4, 2))
         self.assertEqual(len(skeleton['spikelet_s']), 4)
+        self.assertAlmostEqual(
+            skeleton['abstract_stem_length'],
+            float(np.linalg.norm(skeleton['abstract_stem_end'] - skeleton['abstract_stem_start'])),
+            delta=1e-6,
+        )
 
 
 class TestPipelinesAndClustering(unittest.TestCase):
@@ -182,6 +190,7 @@ class TestPipelinesAndClustering(unittest.TestCase):
         self.assertEqual(len(analysis['results']), 4)
         self.assertTrue((output_dir / "phenotype_results.csv").exists())
         self.assertTrue((output_dir / "feature_vectors.csv").exists())
+        self.assertTrue((output_dir / "phenotype_workbook.xlsx").exists())
         self.assertIsNotNone(analysis['cluster'])
         self.assertTrue((output_dir / "cluster_embedding.png").exists())
         self.assertTrue((output_dir / "sample_similarity_heatmap.png").exists())

@@ -140,10 +140,14 @@ function bindEvents() {
 
     refs.statusCard.addEventListener('click', (event) => {
         const runBtn = event.target.closest('#runBtn');
-        if (!runBtn || runBtn.disabled) {
+        if (runBtn && !runBtn.disabled) {
+            runAnalysis();
             return;
         }
-        runAnalysis();
+        const exportBtn = event.target.closest('#exportResultBtn');
+        if (exportBtn && !exportBtn.disabled) {
+            exportPhenotypeWorkbook();
+        }
     });
 
     ['dragenter', 'dragover'].forEach(eventName => {
@@ -345,6 +349,10 @@ function renderStatusCard() {
     const timeTag = formatStatusTime(new Date());
     const showTime = !(state.statusType === 'idle' && state.statusText === '等待上传');
     const showInlineRunBtn = state.statusType === 'ready' && !state.isAnalyzing && state.files.length > 0;
+    const showInlineExportBtn = state.mode === 'batch'
+        && state.statusType === 'success'
+        && !state.isAnalyzing
+        && Boolean(state.batchResult?.downloads?.phenotypes_xlsx);
     const showBatchProgress = state.mode === 'batch' && state.statusType === 'running' && state.batchProgress && state.batchProgress.total > 0;
     let statusTextHtml = escapeHtml(state.statusText);
 
@@ -357,6 +365,20 @@ function renderStatusCard() {
         `.trim();
         if (statusTextHtml.includes('开始分析')) {
             statusTextHtml = statusTextHtml.replace('开始分析', inlineButtonHtml);
+        } else {
+            statusTextHtml = `${statusTextHtml} ${inlineButtonHtml}`;
+        }
+    }
+
+    if (showInlineExportBtn) {
+        const inlineButtonHtml = `
+            <button id="exportResultBtn" class="status-run-btn status-run-btn--inline status-run-btn--export" aria-label="导出表型分析结果">
+                <span class="status-run-btn__shine" aria-hidden="true"></span>
+                <span class="status-run-btn__text">导出表型分析结果</span>
+            </button>
+        `.trim();
+        if (statusTextHtml.includes('导出表型分析结果')) {
+            statusTextHtml = statusTextHtml.replace('导出表型分析结果', inlineButtonHtml);
         } else {
             statusTextHtml = `${statusTextHtml} ${inlineButtonHtml}`;
         }
@@ -403,6 +425,7 @@ function resetPanels() {
     state.batchStatusSignature = null;
     state.clusterLabelMap = {};
     state.clusterResultMap = {};
+    syncWorkbookExportButton();
     stopBatchPolling();
     clearBatchSession();
     refs.viewerImage.removeAttribute('src');
@@ -534,10 +557,24 @@ async function fetchBatchResult(runId) {
     state.batchProgress = null;
     state.batchStatusSignature = null;
     initializeBatchControls(payload.cluster);
+    syncWorkbookExportButton();
     renderBatch(payload);
-    setStatus('批量分析完成', 'success');
+    setStatus('分析完成，点击“导出表型分析结果”', 'success');
     renderStatusCard();
     saveBatchSession({ state: 'completed' });
+}
+
+function syncWorkbookExportButton() {
+    renderStatusCard();
+}
+
+function exportPhenotypeWorkbook() {
+    const runId = state.batchRunId || state.batchResult?.run_id;
+    const downloadUrl = state.batchResult?.downloads?.phenotypes_xlsx;
+    if (!runId || !downloadUrl) {
+        return;
+    }
+    window.open(downloadUrl, '_blank', 'noopener');
 }
 
 function updateBatchProgress(status) {
@@ -790,6 +827,7 @@ function renderSkeletonOverlay() {
     }
 
     const stemPath = buildSvgPath(state.skeletonOverlay.stem_points);
+    const abstractStem = state.skeletonOverlay.abstract_stem || null;
     const stemGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     stemGroup.setAttribute('class', 'skeleton-group');
     stemGroup.innerHTML = `
@@ -798,6 +836,22 @@ function renderSkeletonOverlay() {
         <path class="skeleton-hit skeleton-hit--stem" data-path-id="stem" d="${stemPath}"></path>
     `;
     refs.skeletonSvg.appendChild(stemGroup);
+
+    if (abstractStem?.start_point && abstractStem?.end_point) {
+        const abstractPath = buildSvgPath([abstractStem.start_point, abstractStem.end_point]);
+        const abstractGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        abstractGroup.setAttribute('class', 'skeleton-group');
+        abstractGroup.innerHTML = `
+            <path class="skeleton-path skeleton-path--abstract" data-path-id="abstract" d="${abstractPath}"></path>
+            <path class="skeleton-path skeleton-path--abstract skeleton-path--glow" data-path-id="abstract" d="${abstractPath}"></path>
+            <path class="skeleton-hit skeleton-hit--stem" data-path-id="abstract" d="${abstractPath}"></path>
+            <circle class="skeleton-node skeleton-node--stem-endpoint" data-node-id="stem-start" cx="${abstractStem.start_point[0]}" cy="${abstractStem.start_point[1]}" r="6.2"></circle>
+            <circle class="skeleton-node skeleton-node--stem-endpoint" data-node-id="stem-end" cx="${abstractStem.end_point[0]}" cy="${abstractStem.end_point[1]}" r="6.2"></circle>
+            <circle class="skeleton-node-hit" data-node-id="stem-start" cx="${abstractStem.start_point[0]}" cy="${abstractStem.start_point[1]}" r="12"></circle>
+            <circle class="skeleton-node-hit" data-node-id="stem-end" cx="${abstractStem.end_point[0]}" cy="${abstractStem.end_point[1]}" r="12"></circle>
+        `;
+        refs.skeletonSvg.appendChild(abstractGroup);
+    }
 
     (state.skeletonOverlay.spikelets || []).forEach(spikelet => {
         const branchPath = buildSvgPath([spikelet.highest_point, spikelet.lowest_point]);
@@ -808,8 +862,12 @@ function renderSkeletonOverlay() {
         group.innerHTML = `
             <path class="skeleton-path skeleton-path--branch ${spikelet.side}" data-path-id="spikelet-${spikelet.index}" d="${branchPath}"></path>
             <path class="skeleton-path skeleton-path--branch skeleton-path--glow ${spikelet.side}" data-path-id="spikelet-${spikelet.index}" d="${branchPath}"></path>
-            <circle class="skeleton-node ${spikelet.side}" data-node-id="spikelet-${spikelet.index}" cx="${spikelet.lowest_point[0]}" cy="${spikelet.lowest_point[1]}" r="2.8"></circle>
-            <circle class="skeleton-node ${spikelet.side}" data-node-id="spikelet-${spikelet.index}" cx="${spikelet.highest_point[0]}" cy="${spikelet.highest_point[1]}" r="2.5"></circle>
+            <circle class="skeleton-node ${spikelet.side}" data-node-id="spikelet-base-${spikelet.index}" cx="${spikelet.lowest_point[0]}" cy="${spikelet.lowest_point[1]}" r="5.6"></circle>
+            <circle class="skeleton-node ${spikelet.side}" data-node-id="spikelet-tip-${spikelet.index}" cx="${spikelet.highest_point[0]}" cy="${spikelet.highest_point[1]}" r="5"></circle>
+            ${spikelet.stem_point ? `<circle class="skeleton-node skeleton-node--stem-match" data-node-id="spikelet-stem-${spikelet.index}" cx="${spikelet.stem_point[0]}" cy="${spikelet.stem_point[1]}" r="5.3"></circle>` : ''}
+            <circle class="skeleton-node-hit" data-node-id="spikelet-base-${spikelet.index}" cx="${spikelet.lowest_point[0]}" cy="${spikelet.lowest_point[1]}" r="11"></circle>
+            <circle class="skeleton-node-hit" data-node-id="spikelet-tip-${spikelet.index}" cx="${spikelet.highest_point[0]}" cy="${spikelet.highest_point[1]}" r="11"></circle>
+            ${spikelet.stem_point ? `<circle class="skeleton-node-hit" data-node-id="spikelet-stem-${spikelet.index}" cx="${spikelet.stem_point[0]}" cy="${spikelet.stem_point[1]}" r="11"></circle>` : ''}
             <path class="skeleton-hit skeleton-hit--branch" data-path-id="spikelet-${spikelet.index}" d="${branchPath}"></path>
         `;
         refs.skeletonSvg.appendChild(group);
@@ -828,6 +886,11 @@ function bindSkeletonOverlayEvents() {
         hitPath.addEventListener('pointermove', handleSkeletonPathHover);
         hitPath.addEventListener('pointerleave', clearSkeletonHoverFx);
     });
+    refs.skeletonSvg.querySelectorAll('.skeleton-node-hit').forEach(node => {
+        node.addEventListener('pointerenter', handleSkeletonNodeHover);
+        node.addEventListener('pointermove', handleSkeletonNodeHover);
+        node.addEventListener('pointerleave', clearSkeletonHoverFx);
+    });
 }
 
 function handleSkeletonPathHover(event) {
@@ -840,18 +903,40 @@ function handleSkeletonPathHover(event) {
         return;
     }
 
-    const targetIds = pathId === 'stem' ? ['stem'] : ['stem', pathId];
-    setActiveSkeletonPaths(targetIds);
+    const targetIds = [pathId];
+    setActiveSkeletonElements(targetIds);
 
     const rect = refs.viewer.getBoundingClientRect();
     state.skeletonFxPointer = {
         x: (event.clientX - rect.left - state.translateX) / state.scale,
         y: (event.clientY - rect.top - state.translateY) / state.scale,
     };
+    showSkeletonPathTooltip(event, pathId);
     ensureSkeletonFxLoop();
 }
 
-function setActiveSkeletonPaths(pathIds) {
+function handleSkeletonNodeHover(event) {
+    if (state.currentView !== 'skeleton_extract' || refs.skeletonLayer.classList.contains('hidden')) {
+        return;
+    }
+
+    const nodeId = event.currentTarget.dataset.nodeId;
+    const nodeMeta = getSkeletonNodeMeta(nodeId);
+    if (!nodeMeta) {
+        return;
+    }
+
+    const rect = refs.viewer.getBoundingClientRect();
+    state.skeletonFxPointer = {
+        x: (event.clientX - rect.left - state.translateX) / state.scale,
+        y: (event.clientY - rect.top - state.translateY) / state.scale,
+    };
+    setActiveSkeletonElements(nodeMeta.pathIds, nodeMeta.nodeIds);
+    showTooltipHtml(event, nodeMeta.title, nodeMeta.lines);
+    ensureSkeletonFxLoop();
+}
+
+function setActiveSkeletonElements(pathIds, nodeIds = []) {
     state.skeletonFxTargets = pathIds
         .map(pathId => refs.skeletonSvg.querySelector(`.skeleton-path[data-path-id="${pathId}"]:not(.skeleton-path--glow)`))
         .filter(Boolean);
@@ -862,6 +947,12 @@ function setActiveSkeletonPaths(pathIds) {
 
     pathIds.forEach(pathId => {
         refs.skeletonSvg.querySelectorAll(`.skeleton-path[data-path-id="${pathId}"], .skeleton-node[data-node-id="${pathId}"]`).forEach(element => {
+            element.classList.add('is-active');
+        });
+    });
+
+    nodeIds.forEach(nodeId => {
+        refs.skeletonSvg.querySelectorAll(`.skeleton-node[data-node-id="${nodeId}"]`).forEach(element => {
             element.classList.add('is-active');
         });
     });
@@ -888,13 +979,19 @@ function renderOverlay() {
 }
 
 function showTooltip(event, record) {
+    showTooltipHtml(event, `小穗 #${record.order}`, [
+        `长度: ${record.length.toFixed(2)} px`,
+        `宽度: ${record.width.toFixed(2)} px`,
+        `长宽比: ${record.aspect_ratio.toFixed(3)}`,
+        `着生角度: ${record.attachment_angle.toFixed(2)}°`,
+        `侧别: ${record.side === 'left' ? '左侧' : '右侧'}`,
+    ]);
+}
+
+function showTooltipHtml(event, title, lines) {
     refs.tooltip.innerHTML = `
-        <h4>小穗 #${record.order}</h4>
-        <p>长度: ${record.length.toFixed(2)} px</p>
-        <p>宽度: ${record.width.toFixed(2)} px</p>
-        <p>长宽比: ${record.aspect_ratio.toFixed(3)}</p>
-        <p>着生角度: ${record.attachment_angle.toFixed(2)}°</p>
-        <p>侧别: ${record.side === 'left' ? '左侧' : '右侧'}</p>
+        <h4>${escapeHtml(title)}</h4>
+        ${lines.map(line => `<p>${escapeHtml(line)}</p>`).join('')}
     `;
     refs.tooltip.classList.remove('hidden');
     moveTooltip(event);
@@ -908,6 +1005,131 @@ function moveTooltip(event) {
 
 function hideTooltip() {
     refs.tooltip.classList.add('hidden');
+}
+
+function getPxPerCm() {
+    const pxPerCm = Number(state.singleResult?.calibration?.px_per_cm);
+    return Number.isFinite(pxPerCm) && pxPerCm > 0 ? pxPerCm : null;
+}
+
+function pxToCm(value) {
+    const pxPerCm = getPxPerCm();
+    return pxPerCm ? Number(value) / pxPerCm : null;
+}
+
+function formatCanvasValue(valuePx) {
+    const cmValue = pxToCm(valuePx);
+    if (cmValue === null) {
+        return `${Number(valuePx).toFixed(1)} px`;
+    }
+    return `${cmValue.toFixed(2)} cm`;
+}
+
+function formatCanvasPoint(point) {
+    if (!point) {
+        return 'N/A';
+    }
+    return `(${formatCanvasValue(point[0])}, ${formatCanvasValue(point[1])})`;
+}
+
+function getSkeletonNodeMeta(nodeId) {
+    if (!nodeId || !state.skeletonOverlay) {
+        return null;
+    }
+
+    const abstractStem = state.skeletonOverlay.abstract_stem || {};
+    if (nodeId === 'stem-start') {
+        return {
+            title: '茎骨架起点',
+            lines: [`坐标(O-左上): ${formatCanvasPoint(abstractStem.start_point)}`],
+            pathIds: ['abstract'],
+            nodeIds: ['stem-start'],
+        };
+    }
+    if (nodeId === 'stem-end') {
+        return {
+            title: '茎骨架终点',
+            lines: [`坐标(O-左上): ${formatCanvasPoint(abstractStem.end_point)}`],
+            pathIds: ['abstract'],
+            nodeIds: ['stem-end'],
+        };
+    }
+
+    const match = nodeId.match(/^spikelet-(base|tip|stem)-(\d+)$/);
+    if (!match) {
+        return null;
+    }
+
+    const [, pointType, spikeletIndexText] = match;
+    const spikeletIndex = Number.parseInt(spikeletIndexText, 10);
+    const spikelet = (state.skeletonOverlay.spikelets || []).find(item => item.index === spikeletIndex);
+    if (!spikelet) {
+        return null;
+    }
+
+    const pointMap = {
+        base: {
+            title: `小穗基点 #${spikelet.order}`,
+            point: spikelet.lowest_point,
+            pathIds: [`spikelet-${spikelet.index}`],
+        },
+        tip: {
+            title: `小穗顶点 #${spikelet.order}`,
+            point: spikelet.highest_point,
+            pathIds: [`spikelet-${spikelet.index}`],
+        },
+        stem: {
+            title: `茎骨架对应点 #${spikelet.order}`,
+            point: spikelet.stem_point,
+            pathIds: [`spikelet-${spikelet.index}`],
+        },
+    };
+    const current = pointMap[pointType];
+    if (!current?.point) {
+        return null;
+    }
+
+    return {
+        title: current.title,
+        lines: [
+            `坐标(O-左上): ${formatCanvasPoint(current.point)}`,
+            `侧别: ${spikelet.side === 'left' ? '左侧' : '右侧'}`,
+        ],
+        pathIds: current.pathIds,
+        nodeIds: [nodeId],
+    };
+}
+
+function showSkeletonPathTooltip(event, pathId) {
+    if (pathId === 'stem') {
+        showTooltipHtml(event, '茎骨架拟合曲线', ['沿小穗基点拟合得到的主茎骨架曲线']);
+        return;
+    }
+    if (pathId === 'abstract') {
+        const abstractStem = state.skeletonOverlay?.abstract_stem;
+        if (!abstractStem) {
+            return;
+        }
+        showTooltipHtml(event, '抽象骨架', [
+            `方向向量(O-左上): (${formatCanvasValue(abstractStem.vector?.[0] || 0)}, ${formatCanvasValue(abstractStem.vector?.[1] || 0)})`,
+            `大小: ${formatCanvasValue(abstractStem.length_px || 0)}`,
+            `方向角(相对+x轴, 图像坐标系): ${Number(abstractStem.angle_deg || 0).toFixed(2)}°`,
+            `起点: ${formatCanvasPoint(abstractStem.start_point)}`,
+            `终点: ${formatCanvasPoint(abstractStem.end_point)}`,
+        ]);
+        return;
+    }
+
+    const spikeletIndex = Number.parseInt(pathId.replace('spikelet-', ''), 10);
+    const spikelet = (state.skeletonOverlay?.spikelets || []).find(item => item.index === spikeletIndex);
+    if (!spikelet) {
+        return;
+    }
+    showTooltipHtml(event, `小穗骨架 #${spikelet.order}`, [
+        `侧别: ${spikelet.side === 'left' ? '左侧' : '右侧'}`,
+        `基点: ${formatCanvasPoint(spikelet.lowest_point)}`,
+        `顶点: ${formatCanvasPoint(spikelet.highest_point)}`,
+    ]);
 }
 
 function renderSingleMetrics(result) {
@@ -1091,6 +1313,7 @@ function clearSkeletonHoverFx() {
     refs.skeletonSvg.querySelectorAll('.skeleton-path, .skeleton-node').forEach(element => {
         element.classList.remove('is-active');
     });
+    hideTooltip();
     state.skeletonFxPointer = null;
     state.skeletonFxTargets = [];
     if (state.skeletonFxAnimationFrame) {
