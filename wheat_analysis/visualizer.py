@@ -11,12 +11,57 @@ class Visualizer:
 
     # 配色方案
     COLOR_STEM = (0, 200, 0)           # 主茎线：绿色
-    COLOR_OBB = (0, 255, 255)          # OBB框：青色
-    COLOR_AXIS = (255, 165, 0)         # 小穗长轴：橙色
+    COLOR_OBB = (0, 255, 0)            # OBB框：绿色
     COLOR_CENTER = (0, 0, 255)         # 中心点：红色
     COLOR_TEXT = (255, 255, 255)       # 文字：白色
     COLOR_LEFT = (255, 100, 100)       # 左侧小穗
-    COLOR_RIGHT = (100, 100, 255)      # 右侧小穗
+    COLOR_RIGHT = (111, 81, 255)      # 右侧小穗
+
+    def _draw_order_badge(self, image: np.ndarray, center: tuple[int, int], order: int):
+        """绘制实心红色圆圈序号（默认两位数显示）。"""
+        cx, cy = center
+        radius = 12
+        badge_color = (0, 0, 255)
+        label = f"{order:02d}"
+        cv2.circle(image, (cx, cy), radius, badge_color, -1)
+        (text_w, text_h), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.42, 1)
+        text_x = cx - text_w // 2
+        text_y = cy + (text_h - baseline) // 2
+        cv2.putText(image, label, (text_x, text_y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.42, self.COLOR_TEXT, 1)
+
+    def _draw_conf_label(self, image: np.ndarray, center: np.ndarray, index: int, conf_value: float):
+        """绘制形如 `index:conf` 的置信度标签。"""
+        label = f"{index}:{conf_value:.2f}"
+
+        # 置信度分级配色：高-深绿，中-橙，低-红
+        if conf_value >= 0.8:
+            bg_color = (0, 120, 0)
+        elif conf_value >= 0.6:
+            bg_color = (0, 165, 255)
+        else:
+            bg_color = (0, 0, 255)
+
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.45
+        thickness = 1
+        (text_w, text_h), baseline = cv2.getTextSize(label, font, font_scale, thickness)
+
+        # 以目标中心点为锚点，标签绘制在中心点右上方
+        cx, cy = int(center[0]), int(center[1])
+        x1 = max(0, cx - text_w // 2)  # 改为水平居中
+        y2 = max(text_h + baseline + 6, cy - 6)
+        y1 = y2 - text_h - baseline - 6
+        x2 = min(image.shape[1] - 1, x1 + text_w + 8)
+
+        if x2 - x1 < text_w + 4:
+            x1 = max(0, x2 - text_w - 8)
+        if x2 <= x1:
+            return
+
+        cv2.rectangle(image, (x1, y1), (x2, y2), bg_color, -1)
+        cv2.putText(image, label, (x1 + 4, y2 - baseline - 3),
+                    font, font_scale, self.COLOR_TEXT, thickness)
 
     def draw_detection(self, image: np.ndarray, detection: dict,
                        draw_obb: bool = True, draw_centers: bool = True,
@@ -32,6 +77,7 @@ class Visualizer:
 
             if draw_obb:
                 cv2.drawContours(vis, [corners], 0, self.COLOR_OBB, 2)
+                self._draw_conf_label(vis, centers[i], i, float(conf[i]))
 
             if draw_centers:
                 cx, cy = int(centers[i, 0]), int(centers[i, 1])
@@ -39,8 +85,7 @@ class Visualizer:
 
             if draw_index:
                 cx, cy = int(centers[i, 0]), int(centers[i, 1])
-                cv2.putText(vis, str(i), (cx + 8, cy - 8),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.COLOR_TEXT, 2)
+                self._draw_order_badge(vis, (cx + 12, cy - 12), i)
 
         return vis
 
@@ -78,8 +123,7 @@ class Visualizer:
             cv2.circle(vis, (cx, cy), 4, self.COLOR_CENTER, -1)
 
             # 标注沿主茎排序序号
-            cv2.putText(vis, str(order_labels[i] + 1), (cx + 8, cy - 8),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.COLOR_TEXT, 2)
+            self._draw_order_badge(vis, (cx + 14, cy - 14), int(order_labels[i] + 1))
 
         return vis
     
@@ -91,9 +135,12 @@ class Visualizer:
 
         # 1. 绘制OBB框
         xyxyxyxy = detection['xyxyxyxy']
+        conf = detection.get('conf')
         for i in range(len(xyxyxyxy)):
             corners = xyxyxyxy[i].astype(np.int32)
             cv2.drawContours(vis, [corners], 0, self.COLOR_OBB, 2)
+            if conf is not None:
+                self._draw_conf_label(vis, detection['centers'][i], i, float(conf[i]))
 
         # 2. 绘制骨架
         stem_pts = skeleton['stem_points'].astype(np.int32)
@@ -144,7 +191,7 @@ class Visualizer:
             f"Mean L/W: {ear_pheno['mean_spikelet_length']:.1f}/{ear_pheno['mean_spikelet_width']:.1f}",
             f"Mean Attach Angle: {ear_pheno['mean_attachment_angle']:.1f} deg",
             f"Density: {ear_pheno['spikelet_density_px']:.4f}",
-            f"Asymmetry: {ear_pheno['asymmetry_index']:.4f}",
+            f"Symmetry: {ear_pheno['symmetry_index']:.4f}",
             f"Centroid Offset: {ear_pheno['centroid_offset']:.4f}",
         ]
 

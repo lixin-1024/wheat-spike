@@ -11,6 +11,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import cm, colors as mcolors
 from scipy.cluster.hierarchy import dendrogram, linkage
 from scipy.spatial.distance import pdist
 from sklearn.cluster import AgglomerativeClustering
@@ -18,6 +19,19 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
+
+
+PAPER_RC = {
+    "font.family": "serif",
+    "font.serif": ["Times New Roman", "Times New Roman PS", "DejaVu Serif"],
+    "axes.titlesize": 13,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "legend.fontsize": 9,
+    "figure.dpi": 300,
+    "savefig.dpi": 300,
+}
 
 
 class PhenotypeClusterAnalyzer:
@@ -192,7 +206,7 @@ class PhenotypeClusterAnalyzer:
             "mean_spikelet_width": "mean_spikelet_width_mm",
             "mean_spikelet_width_mm": "mean_spikelet_width_mm",
             "mean_attachment_angle": "mean_attachment_angle",
-            "asymmetry_index": "mean_asymmetry_index",
+            "symmetry_index": "mean_symmetry_index",
             "centroid_offset": "mean_centroid_offset",
         }
         for source, alias in aliases.items():
@@ -305,38 +319,104 @@ class PhenotypeClusterAnalyzer:
                 writer.writerow([cluster_id, *[f"{value:.6f}" for value in center]])
 
     def _save_embedding_plot(self, image_path: Path, image_names, labels, embedding):
-        plt.figure(figsize=(8.6, 6.6), facecolor="#08111f")
-        ax = plt.gca()
-        ax.set_facecolor("#08111f")
-        scatter = ax.scatter(
-            embedding[:, 0],
-            embedding[:, 1],
-            c=labels,
-            cmap="viridis",
-            s=84,
-            alpha=0.9,
-            edgecolors="#dff7ff",
-            linewidths=0.8,
-        )
-        for name, point in zip(image_names, embedding):
-            ax.text(point[0] + 0.8, point[1] + 0.8, name, fontsize=8, color="#dff7ff", alpha=0.88)
-        ax.set_title("Phenotype Cluster Map", color="white", fontsize=14, pad=12)
-        ax.set_xlabel("Embedding X", color="#dff7ff")
-        ax.set_ylabel("Embedding Y", color="#dff7ff")
-        ax.tick_params(colors="#9dc9ff")
-        ax.grid(color="#19324f", alpha=0.5)
-        cbar = plt.colorbar(scatter)
-        cbar.ax.yaxis.set_tick_params(color="#dff7ff")
-        plt.setp(plt.getp(cbar.ax.axes, "yticklabels"), color="#dff7ff")
-        plt.tight_layout()
-        plt.savefig(image_path, dpi=220, facecolor="#08111f")
-        plt.close()
+        palette = [
+            "#1f77b4",  # blue
+            "#d62728",  # red
+            "#2ca02c",  # green
+            "#ff7f0e",  # orange
+            "#9467bd",  # purple
+            "#8c564b",  # brown
+            "#e377c2",  # pink
+            "#17becf",  # cyan
+        ]
+        with plt.rc_context(PAPER_RC):
+            fig, ax = plt.subplots(figsize=(7.2, 5.6), facecolor="white")
+            ax.set_facecolor("white")
+
+            unique_labels = sorted({int(x) for x in labels.tolist()})
+            for cluster_id in unique_labels:
+                mask = labels == cluster_id
+                color = palette[cluster_id % len(palette)]
+                ax.scatter(
+                    embedding[mask, 0],
+                    embedding[mask, 1],
+                    s=58,
+                    alpha=0.92,
+                    c=color,
+                    edgecolors="black",
+                    linewidths=0.5,
+                    label=f"Cluster {cluster_id + 1}",
+                    zorder=3,
+                )
+
+            for name, point in zip(image_names, embedding):
+                ax.annotate(
+                    name,
+                    xy=(float(point[0]), float(point[1])),
+                    xytext=(4, 3),
+                    textcoords="offset points",
+                    fontsize=7.5,
+                    color="black",
+                    alpha=0.88,
+                )
+
+            ax.set_title("Phenotype Cluster Embedding", pad=10)
+            ax.set_xlabel("Embedding Dimension 1")
+            ax.set_ylabel("Embedding Dimension 2")
+            ax.grid(True, linestyle="--", linewidth=0.6, alpha=0.35, color="#8f8f8f")
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.legend(loc="best", frameon=False)
+            fig.tight_layout()
+            fig.savefig(image_path, facecolor="white", bbox_inches="tight")
+            plt.close(fig)
 
     def _save_dendrogram(self, image_path: Path, image_names, linkage_matrix):
-        plt.figure(figsize=(8.6, 6.2), facecolor="white")
-        dendrogram(linkage_matrix, labels=image_names, leaf_rotation=45, leaf_font_size=8)
-        plt.title("Phenotype Hierarchical Clustering")
-        plt.ylabel("Ward Distance")
-        plt.tight_layout()
-        plt.savefig(image_path, dpi=220)
-        plt.close()
+        with plt.rc_context(PAPER_RC):
+            fig, ax = plt.subplots(figsize=(8.2, 5.8), facecolor="white")
+            sample_count = len(image_names)
+            heights = np.asarray(linkage_matrix[:, 2], dtype=float)
+            h_min = float(np.min(heights)) if len(heights) else 0.0
+            h_max = float(np.max(heights)) if len(heights) else 1.0
+            if abs(h_max - h_min) < 1e-12:
+                h_max = h_min + 1.0
+
+            norm = mcolors.Normalize(vmin=h_min, vmax=h_max)
+            cmap = cm.get_cmap("turbo")
+
+            # node_id >= sample_count 表示内部合并节点
+            node_height = {
+                sample_count + idx: float(row[2])
+                for idx, row in enumerate(linkage_matrix)
+            }
+
+            def branch_color_func(node_id: int) -> str:
+                height = node_height.get(int(node_id), h_min)
+                r, g, b, _ = cmap(norm(height))
+                return mcolors.to_hex((r, g, b), keep_alpha=False)
+
+            dendrogram(
+                linkage_matrix,
+                labels=image_names,
+                leaf_rotation=40,
+                leaf_font_size=8,
+                color_threshold=0,
+                above_threshold_color="#2f2f2f",
+                link_color_func=branch_color_func,
+                ax=ax,
+            )
+            ax.set_title("Hierarchical Clustering Dendrogram", pad=10)
+            ax.set_ylabel("Ward Linkage Distance")
+            ax.set_xlabel("Sample")
+            ax.grid(axis="y", linestyle="--", linewidth=0.55, alpha=0.3, color="#8f8f8f")
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+
+            sm = cm.ScalarMappable(norm=norm, cmap=cmap)
+            sm.set_array([])
+            cbar = fig.colorbar(sm, ax=ax, fraction=0.03, pad=0.02)
+            cbar.set_label("Merge Height", fontsize=9)
+
+            fig.tight_layout()
+            fig.savefig(image_path, facecolor="white", bbox_inches="tight")
+            plt.close(fig)

@@ -251,7 +251,7 @@ class BatchImagePipeline(_BasePipeline):
             'spike_length_cm': self._safe_float(ear['spike_length_cm']),
             'spikelet_density_px': self._safe_float(ear['spikelet_density_px']),
             'spikelet_density_per_cm': self._safe_float(ear['spikelet_density_per_cm']),
-            'asymmetry_index': self._safe_float(ear['asymmetry_index']),
+            'symmetry_index': self._safe_float(ear['symmetry_index']),
             'centroid_offset': self._safe_float(ear['centroid_offset']),
         }
 

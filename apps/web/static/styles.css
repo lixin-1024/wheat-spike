@@ -461,7 +461,7 @@ body::after {
     margin-top: 18px;
     display: grid;
     gap: 10px;
-    max-height: 600px;
+    max-height: 1000px;
     overflow-y: auto;
     padding-right: 4px;
 }
@@ -1211,13 +1211,13 @@ body.modal-open {
 
 .skeleton-path--stem {
     stroke: rgba(105, 244, 140, 0.92);
-    stroke-width: 5;
+    stroke-width: 7.2;
     opacity: 0.96;
 }
 
 .skeleton-path--branch {
     stroke: rgba(174, 240, 255, 0.78);
-    stroke-width: 2.4;
+    stroke-width: 4.1;
     opacity: 0.84;
 }
 
@@ -1245,13 +1245,13 @@ body.modal-open {
 .skeleton-path--glow.is-active {
     opacity: 0.88;
     stroke: rgba(174, 246, 255, 0.9);
-    stroke-width: 6.2;
+    stroke-width: 8.6;
     stroke-dasharray: 14 20;
     animation: skeletonFlow 1.8s linear infinite, skeletonGlowBreath 1.6s ease-in-out infinite;
 }
 
 .skeleton-path--branch.skeleton-path--glow.is-active {
-    stroke-width: 4;
+    stroke-width: 6.1;
 }
 
 .skeleton-path--stem.skeleton-path--glow.is-active {

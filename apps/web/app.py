@@ -178,7 +178,7 @@ def enrich_cluster_result(cluster_result: dict | None, serialized_results: list[
             pick("mean_spikelet_width_mm", "mean_spikelet_width"),
         )
         source.setdefault("mean_attachment_angle", pick("mean_attachment_angle"))
-        source.setdefault("mean_asymmetry_index", pick("mean_asymmetry_index", "asymmetry_index"))
+        source.setdefault("mean_symmetry_index", pick("mean_symmetry_index", "symmetry_index"))
         source.setdefault("mean_centroid_offset", pick("mean_centroid_offset", "centroid_offset"))
         return source
 
@@ -342,7 +342,7 @@ def build_cluster_export_csv(payload: dict, cluster_id: int) -> str | None:
         "mean_spikelet_length_mm",
         "mean_spikelet_width_mm",
         "mean_attachment_angle",
-        "asymmetry_index",
+        "symmetry_index",
         "centroid_offset",
     ]
     writer.writerow(["image", *feature_keys])

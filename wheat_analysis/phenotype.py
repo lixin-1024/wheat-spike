@@ -1,7 +1,5 @@
 """
 表型特征提取模块。
-
-仅保留当前任务需要的表型：
 - 小穗级：长度、宽度、长宽比、着生角度
 - 穗级：平均小穗表型、穗长、小穗数、着生密度、对称度、重心偏移度
 """
@@ -23,18 +21,14 @@ class PhenotypeExtractor:
         提取小穗级表型。
 
         着生角度定义：
-        小穗长轴方向 与 该小穗基节点处主茎切线方向 的夹角，
+        小穗中轴方向 与 该小穗基节点处主茎切线方向 的夹角，
         结果折叠到 [0, 90] 度。
         """
         lengths = np.asarray(detection['heights'], dtype=float)
         widths = np.asarray(detection['widths'], dtype=float)
         aspect_ratios = lengths / np.maximum(widths, 1e-6)
 
-        # 直接使用“最高点 - 最低点”作为小穗主轴方向，确保与基节点定义一致。
-        axis_vectors = (
-            np.asarray(skeleton['spikelet_highest_points'], dtype=float)
-            - np.asarray(skeleton['spikelet_lowest_points'], dtype=float)
-        )
+        axis_vectors = np.asarray(skeleton['spikelet_axis_dirs'], dtype=float)
         tangent_vectors = np.asarray(skeleton['spikelet_tangent'], dtype=float)
         attachment_angles_deg = self._compute_attachment_angles(axis_vectors, tangent_vectors)
 
@@ -80,7 +74,7 @@ class PhenotypeExtractor:
             'mean_attachment_angle': float(attachment_angles.mean()) if len(attachment_angles) else 0.0,
             'spike_length_px': spike_length_px,
             'spikelet_density_px': spikelet_count / spike_length_px if spike_length_px > 0 else 0.0,
-            'asymmetry_index': self._compute_asymmetry_index(
+            'symmetry_index': self._compute_symmetry_index(
                 spikelet_side,
                 lengths,
                 widths,
@@ -142,7 +136,7 @@ class PhenotypeExtractor:
                 if ear_pheno.get('spikelet_density_per_cm') is not None
                 else ear_pheno['spikelet_density_px']
             ),
-            'asymmetry_index': float(ear_pheno['asymmetry_index']),
+            'symmetry_index': float(ear_pheno['symmetry_index']),
             'centroid_offset': float(ear_pheno['centroid_offset']),
         }
         return list(feature_map.keys()), np.asarray(list(feature_map.values()), dtype=float)
@@ -174,7 +168,7 @@ class PhenotypeExtractor:
         cos_theta = np.clip(np.abs(np.sum(axis_unit * tangent_unit, axis=1)), 0.0, 1.0)
         return np.degrees(np.arccos(cos_theta))
 
-    def _compute_asymmetry_index(
+    def _compute_symmetry_index(
         self,
         spikelet_side: np.ndarray,
         lengths: np.ndarray,
@@ -183,17 +177,40 @@ class PhenotypeExtractor:
         attachment_angles: np.ndarray,
     ) -> float:
         """
-        左右两侧在四项小穗级表型上的均值差异，按整体均值归一化后取平均。
+        采用 Gap = |L - R| / (L + R) 将差异严格映射到 [0, 1] 区间，最后通过 1.0 - mean(Gap) 得到最终的对称度指数。
         """
         left_mask = spikelet_side < 0
         right_mask = spikelet_side > 0
-        metrics = [lengths, widths, aspect_ratios, attachment_angles]
 
         normalized_gaps = []
+
+        # 1. 计算左右侧小穗数量差异
+        left_count = float(np.sum(left_mask))
+        right_count = float(np.sum(right_mask))
+        count_denominator = left_count + right_count
+
+        if count_denominator > 1e-8:
+            count_gap = abs(left_count - right_count) / count_denominator
+        else:
+            count_gap = 0.0
+        normalized_gaps.append(count_gap)
+
+        # 2. 计算各项形态学表型特征的平均差异
+        metrics = [lengths, widths, aspect_ratios, attachment_angles]
         for metric in metrics:
             left_mean = float(metric[left_mask].mean()) if np.any(left_mask) else 0.0
             right_mean = float(metric[right_mask].mean()) if np.any(right_mask) else 0.0
-            overall_mean = float(metric.mean()) if len(metric) else 0.0
-            normalized_gaps.append(abs(left_mean - right_mean) / overall_mean if overall_mean > 1e-8 else 0.0)
 
-        return float(np.mean(normalized_gaps)) if normalized_gaps else 0.0
+            # 以 L + R 为分母，天然约束结果在 0 到 1 之间
+            denominator = left_mean + right_mean
+            if denominator > 1e-8:
+                gap = abs(left_mean - right_mean) / denominator
+            else:
+                # 如果两边特征均值都为0，视为无差异，完美对称
+                gap = 0.0
+
+            normalized_gaps.append(gap)
+
+        # mean_gap 越大代表越不对称，因此用 1 减去它，得到正向的对称度指数
+        mean_gap = float(np.mean(normalized_gaps)) if normalized_gaps else 0.0
+        return 1.0 - mean_gap

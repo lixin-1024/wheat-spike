@@ -920,7 +920,7 @@ function renderSingleMetrics(result) {
         ['穗长', formatMetric(ear.spike_length_cm, 'cm', ear.spike_length_px, 'px')],
         ['小穗数', `${ear.spikelet_count}`],
         ['着生密度', formatMetric(ear.spikelet_density_per_cm, '/cm', ear.spikelet_density_px, '/px')],
-        ['对称度指数', ear.asymmetry_index.toFixed(4)],
+        ['对称度指数', ear.symmetry_index.toFixed(4)],
         ['重心偏移度', ear.centroid_offset.toFixed(4)],
     ];
 
@@ -1351,7 +1351,7 @@ function renderClusterCompare(cluster) {
     refs.clusterCompare.classList.remove('hidden');
     refs.clusterCompareSummary.innerHTML = `
         <div class="cluster-compare__summary-head">
-            <div class="cluster-compare__summary-title">已选择 ${selected.length} 个类簇</div>
+            <div class="cluster-compare__summary-title">已选择 ${selected.length} 类簇</div>
             <button class="ghost-btn cluster-compare__clear" id="clearCompareBtn">清空对比</button>
         </div>
         <div class="cluster-compare__summary-pills">
@@ -1377,7 +1377,7 @@ function renderClusterCompare(cluster) {
         { key: 'mean_spike_length_cm', label: '穗长', unit: 'cm', group: '穗级特征', groupClass: 'ear' },
         { key: 'spikelet_count', label: '小穗数', unit: '', group: '穗级特征', groupClass: 'ear' },
         { key: 'spikelet_density', label: '着生密度', unit: '', group: '穗级特征', groupClass: 'ear' },
-        { key: 'mean_asymmetry_index', label: '对称度', unit: '', group: '穗级特征', groupClass: 'ear' },
+        { key: 'mean_symmetry_index', label: '对称度', unit: '', group: '穗级特征', groupClass: 'ear' },
         { key: 'mean_centroid_offset', label: '重心偏移度', unit: '', group: '穗级特征', groupClass: 'ear' },
     ];
     const metrics = [...spikeletMetrics, ...earMetrics];
@@ -1778,7 +1778,7 @@ function getClusterMetricOptions(cluster) {
         { key: 'mean_spike_length_cm', label: '穗长', group: 'ear', groupLabel: '穗级特征' },
         { key: 'spikelet_count', label: '小穗数', group: 'ear', groupLabel: '穗级特征' },
         { key: 'spikelet_density', label: '着生密度', group: 'ear', groupLabel: '穗级特征' },
-        { key: 'mean_asymmetry_index', label: '对称度', group: 'ear', groupLabel: '穗级特征' },
+        { key: 'mean_symmetry_index', label: '对称度', group: 'ear', groupLabel: '穗级特征' },
         { key: 'mean_centroid_offset', label: '重心偏移度', group: 'ear', groupLabel: '穗级特征' },
     ];
     const availableMetrics = cluster?.clusters?.[0]?.aggregate_metrics || {};
@@ -1881,13 +1881,13 @@ function getMetricLabel(key) {
         mean_attachment_angle: '平均着生角',
         spike_length: '穗长',
         spikelet_density: '小穗密度',
-        asymmetry_index: '对称度',
+        symmetry_index: '对称度',
         centroid_offset: '重心偏移度',
         spike_length_cm: '穗长',
         mean_spike_length_cm: '平均穗长',
         mean_spikelet_length_mm: '平均小穗长度',
         mean_spikelet_width_mm: '平均小穗宽度',
-        mean_asymmetry_index: '平均对称度',
+        mean_symmetry_index: '平均对称度',
         mean_centroid_offset: '平均重心偏移度',
     };
     return labelMap[key] || null;
@@ -1927,7 +1927,7 @@ function buildNineSampleMetricRows(ear) {
         { group: '穗级特征', label: '穗长', value: formatMetric(safeEar.spike_length_cm, 'cm', safeEar.spike_length_px ?? 0, 'px') },
         { group: '穗级特征', label: '小穗数', value: String(Math.round(Number(safeEar.spikelet_count ?? 0))) },
         { group: '穗级特征', label: '着生密度', value: formatMetric(safeEar.spikelet_density_per_cm, '/cm', safeEar.spikelet_density_px ?? 0, '/px') },
-        { group: '穗级特征', label: '对称度', value: Number(safeEar.asymmetry_index ?? 0).toFixed(4) },
+        { group: '穗级特征', label: '对称度', value: Number(safeEar.symmetry_index ?? 0).toFixed(4) },
         { group: '穗级特征', label: '重心偏移度', value: Number(safeEar.centroid_offset ?? 0).toFixed(4) },
     ];
 }
@@ -1942,7 +1942,7 @@ function buildNineClusterMetricRows(clusterItem) {
         { group: '穗级特征', label: '穗长', value: formatClusterMetric(metrics.mean_spike_length_cm, 'cm') },
         { group: '穗级特征', label: '小穗数', value: formatClusterMetric(metrics.spikelet_count, '') },
         { group: '穗级特征', label: '着生密度', value: formatClusterMetric(metrics.spikelet_density, '') },
-        { group: '穗级特征', label: '对称度', value: formatClusterMetric(metrics.mean_asymmetry_index, '') },
+        { group: '穗级特征', label: '对称度', value: formatClusterMetric(metrics.mean_symmetry_index, '') },
         { group: '穗级特征', label: '重心偏移度', value: formatClusterMetric(metrics.mean_centroid_offset, '') },
     ];
 }

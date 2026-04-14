@@ -28,7 +28,7 @@ COLOR_SMOOTH = "#D27D2D"   # 平滑曲线
 GRID_COLOR = "#D9D9D9"
 
 # ========= 2) 读取训练结果 =========
-csv_path = Path(r"./runs/obb/yolo11_1440_4/results.csv")
+csv_path = Path(r"results.csv")
 df = pd.read_csv(csv_path)
 df.columns = [c.strip() for c in df.columns]
 
@@ -46,7 +46,7 @@ metrics = [m for m in metrics if m in df.columns]
 n = len(metrics)
 cols = 6
 rows = (n + cols - 1) // cols
-fig, axes = plt.subplots(rows, cols, figsize=(3.4 * cols, 2.8 * rows), constrained_layout=True)
+fig, axes = plt.subplots(rows, cols, figsize=(2 * cols, 2.8 * rows), constrained_layout=True)
 axes = axes.flatten()
 
 x = df["epoch"] if "epoch" in df.columns else range(1, len(df) + 1)

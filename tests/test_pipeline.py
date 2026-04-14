@@ -63,6 +63,7 @@ class TestPhenotypeExtractor(unittest.TestCase):
         skeleton = {
             'spikelet_highest_points': np.array([[0, 0], [10, 0]], dtype=float),
             'spikelet_lowest_points': np.array([[0, 10], [0, 0]], dtype=float),
+            'spikelet_axis_dirs': np.array([[0, -1], [1, 0]], dtype=float),
             'spikelet_tangent': np.array([[0, 1], [0, 1]], dtype=float),
         }
 
@@ -99,7 +100,7 @@ class TestPhenotypeExtractor(unittest.TestCase):
             'mean_attachment_angle',
             'spike_length_px',
             'spikelet_density_px',
-            'asymmetry_index',
+            'symmetry_index',
             'centroid_offset',
             'calibration_ok',
             'px_per_cm',
@@ -170,7 +171,7 @@ class TestPipelinesAndClustering(unittest.TestCase):
         single_result = single.analyze(str(image_dir / "sample_0.png"), str(output_dir))
         self.assertIn('spikelet_records', single_result)
         self.assertIn('attachment_angles_deg', single_result['spikelet_pheno'])
-        self.assertIn('asymmetry_index', single_result['ear_pheno'])
+        self.assertIn('symmetry_index', single_result['ear_pheno'])
 
         batch = BatchImagePipeline(
             model_path='unused.pt',

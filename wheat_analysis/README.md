@@ -249,7 +249,7 @@ $$
 以左侧/右侧在 4 个小穗指标上的均值差为基础（长度、宽度、长宽比、着生角），定义：
 
 $$
-\text{AI}=\frac{1}{4}\sum_{m=1}^{4}\frac{|\mu_L^{(m)}-\mu_R^{(m)}|}{\mu_{all}^{(m)}+\varepsilon}
+	ext{SI}=\frac{1}{1+\frac{1}{4}\sum_{m=1}^{4}\frac{|\mu_L^{(m)}-\mu_R^{(m)}|}{\mu_{all}^{(m)}+\varepsilon}}
 $$
 
 其中 $\varepsilon$ 用于避免除零。
@@ -265,7 +265,7 @@ $$
 5. `mean_attachment_angle`  
 6. `spike_length`  
 7. `spikelet_density`  
-8. `asymmetry_index`  
+8. `symmetry_index`  
 9. `centroid_offset`
 
 ## 4.5 聚类分析模块（PhenotypeClusterAnalyzer）

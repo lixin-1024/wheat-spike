@@ -133,5 +133,12 @@ TODO.md
 # Uploads
 uploads/
 results/
+display/
+
+*.pt
+*.pdf
+*.png
+*.jpg
+
 
 .workbuddy/
