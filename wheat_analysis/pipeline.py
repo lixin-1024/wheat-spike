@@ -58,7 +58,7 @@ class _BasePipeline:
             'error': error,
         }
 
-    def _save_visual_outputs(self, output_dir: str, image_path: str, image, detection, skeleton, vis_image):
+    def _save_visual_outputs(self, output_dir: str, image_path: str, image, detection, skeleton, vis_image, corrected_image=None, calibration=None):
         out_dir = Path(output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         stem = Path(image_path).stem
@@ -66,6 +66,13 @@ class _BasePipeline:
         if image is None:
             return
         self.visualizer.save(image, str(out_dir / f"{stem}_original.jpg"))
+        if corrected_image is not None:
+            self.visualizer.save(corrected_image, str(out_dir / f"{stem}_corrected.jpg"))
+        else:
+            self.visualizer.save(image, str(out_dir / f"{stem}_corrected.jpg"))
+        calibration_vis = self.calibrator.draw_calibration_overlay(image, calibration)
+        if calibration_vis is not None:
+            self.visualizer.save(calibration_vis, str(out_dir / f"{stem}_calibration.jpg"))
         if vis_image is not None:
             self.visualizer.save(vis_image, str(out_dir / f"{stem}_analysis.jpg"))
         if skeleton is not None:
@@ -161,7 +168,15 @@ class SingleImagePipeline(_BasePipeline):
             'disc_radius_px': None,
             'disc_diameter_px': None,
             'color_card_bbox': None,
+            'color_card_corners': None,
+            'color_card_size': None,
+            'color_calibration_ok': False,
+            'color_card_orientation': None,
+            'color_matrix': None,
+            'color_patch_error': None,
+            'color_patch_means': None,
         }
+        corrected_image = self.calibrator.apply_color_correction(image, calibration) if image is not None else None
 
         detection = self.detector.detect(image_path)
         if detection['count'] < 2:
@@ -170,7 +185,13 @@ class SingleImagePipeline(_BasePipeline):
         skeleton = self.skeleton_builder.build(detection)
         spikelet_pheno = self.phenotype_extractor.extract_spikelet_phenotypes(detection, skeleton, calibration)
         spikelet_records = self.phenotype_extractor.build_spikelet_records(detection, skeleton, spikelet_pheno)
-        ear_pheno = self.phenotype_extractor.extract_ear_phenotypes(detection, skeleton, spikelet_pheno, calibration)
+        ear_pheno = self.phenotype_extractor.extract_ear_phenotypes(
+            detection,
+            skeleton,
+            spikelet_pheno,
+            calibration,
+            corrected_image if corrected_image is not None else image,
+        )
         feature_names, feature_vector = self.phenotype_extractor.build_feature_vector(ear_pheno)
 
         vis_image = self.visualizer.draw_full_analysis(
@@ -178,7 +199,16 @@ class SingleImagePipeline(_BasePipeline):
         ) if image is not None else None
 
         if output_dir:
-            self._save_visual_outputs(output_dir, image_path, image, detection, skeleton, vis_image)
+            self._save_visual_outputs(
+                output_dir,
+                image_path,
+                image,
+                detection,
+                skeleton,
+                vis_image,
+                corrected_image=corrected_image,
+                calibration=calibration,
+            )
 
         return {
             'detection': detection,
@@ -218,6 +248,10 @@ class BatchImagePipeline(_BasePipeline):
         'spikelet_density_per_cm': '小穗密度(每厘米)',
         'symmetry_index': '对称度指数',
         'centroid_offset': '重心偏移度',
+        'color_calibration_ok': '色彩校正是否成功',
+        'mean_hue_deg': '平均色相(deg)',
+        'mean_saturation': '平均饱和度',
+        'std_hue': '色相标准差(deg)',
         'abstract_vector_dx_px': '抽象骨架向量X分量(px)',
         'abstract_vector_dy_px': '抽象骨架向量Y分量(px)',
         'abstract_vector_length_px': '抽象骨架长度(px)',
@@ -352,6 +386,10 @@ class BatchImagePipeline(_BasePipeline):
             'spikelet_density_per_cm': self._safe_float(ear['spikelet_density_per_cm']),
             'symmetry_index': self._safe_float(ear['symmetry_index']),
             'centroid_offset': self._safe_float(ear['centroid_offset']),
+            'color_calibration_ok': bool(ear.get('color_calibration_ok')),
+            'mean_hue_deg': self._safe_float(ear.get('mean_hue_deg')),
+            'mean_saturation': self._safe_float(ear.get('mean_saturation')),
+            'std_hue': self._safe_float(ear.get('std_hue')),
         }
 
     def _build_feature_row(self, image_name: str, feature_names: list[str], feature_vector: np.ndarray) -> dict:

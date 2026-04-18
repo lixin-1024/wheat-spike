@@ -79,6 +79,8 @@ def to_json_safe(value):
 def result_image_urls(run_id: str, stem_name: str):
     return {
         "original": f"/results/{run_id}/{stem_name}_original.jpg",
+        "corrected": f"/results/{run_id}/{stem_name}_corrected.jpg",
+        "calibration": f"/results/{run_id}/{stem_name}_calibration.jpg",
         "analysis": f"/results/{run_id}/{stem_name}_analysis.jpg",
         "skeleton": f"/results/{run_id}/{stem_name}_skeleton.jpg",
         "detection": f"/results/{run_id}/{stem_name}_detection.jpg",
@@ -194,6 +196,9 @@ def enrich_cluster_result(cluster_result: dict | None, serialized_results: list[
         source.setdefault("mean_attachment_angle", pick("mean_attachment_angle"))
         source.setdefault("mean_symmetry_index", pick("mean_symmetry_index", "symmetry_index"))
         source.setdefault("mean_centroid_offset", pick("mean_centroid_offset", "centroid_offset"))
+        source.setdefault("mean_hue_deg", pick("mean_hue_deg"))
+        source.setdefault("mean_saturation", pick("mean_saturation"))
+        source.setdefault("std_hue", pick("std_hue"))
         return source
 
     result_map = {item.get("image_name") or item.get("filename"): item for item in serialized_results}
@@ -359,6 +364,9 @@ def build_cluster_export_csv(payload: dict, cluster_id: int) -> str | None:
         "mean_attachment_angle",
         "symmetry_index",
         "centroid_offset",
+        "mean_hue_deg",
+        "mean_saturation",
+        "std_hue",
     ]
     writer.writerow(["image", *feature_keys])
     for sample in target.get("samples", []):

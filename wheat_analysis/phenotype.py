@@ -1,15 +1,20 @@
 """
 表型特征提取模块。
 - 小穗级：长度、宽度、长宽比、着生角度
-- 穗级：平均小穗表型、穗长、小穗数、着生密度、对称度、重心偏移度
+- 穗级：平均小穗表型、穗长、小穗数、着生密度、对称度、重心偏移度、颜色统计
 """
 from __future__ import annotations
 
+import cv2
 import numpy as np
 
 
 class PhenotypeExtractor:
     """表型特征提取器"""
+
+    def __init__(self, patch_half_size: int = 8):
+        # 每个小穗中心点按 (2 * patch_half_size + 1)^2 的微区块采样。
+        self.patch_half_size = int(max(1, patch_half_size))
 
     def extract_spikelet_phenotypes(
         self,
@@ -52,6 +57,7 @@ class PhenotypeExtractor:
         skeleton: dict,
         spikelet_pheno: dict,
         calibration: dict | None = None,
+        image: np.ndarray | None = None,
     ) -> dict:
         """
         提取穗级表型。
@@ -89,6 +95,10 @@ class PhenotypeExtractor:
             'spikelet_density_per_cm': None,
             'mean_spikelet_length_mm': None,
             'mean_spikelet_width_mm': None,
+            'color_calibration_ok': bool(calibration.get('color_calibration_ok')) if calibration else False,
+            'mean_hue_deg': None,
+            'mean_saturation': None,
+            'std_hue': None,
         }
 
         if calibration and calibration.get('calibration_ok'):
@@ -103,6 +113,10 @@ class PhenotypeExtractor:
                 'mean_spikelet_length_mm': result['mean_spikelet_length'] * mm_per_px,
                 'mean_spikelet_width_mm': result['mean_spikelet_width'] * mm_per_px,
             })
+
+        color_stats = self._extract_color_statistics(image, detection)
+        if color_stats:
+            result.update(color_stats)
 
         return result
 
@@ -138,6 +152,9 @@ class PhenotypeExtractor:
             ),
             'symmetry_index': float(ear_pheno['symmetry_index']),
             'centroid_offset': float(ear_pheno['centroid_offset']),
+            'mean_hue_deg': float(ear_pheno.get('mean_hue_deg') or 0.0),
+            'mean_saturation': float(ear_pheno.get('mean_saturation') or 0.0),
+            'std_hue': float(ear_pheno.get('std_hue') or 0.0),
         }
         return list(feature_map.keys()), np.asarray(list(feature_map.values()), dtype=float)
 
@@ -214,3 +231,41 @@ class PhenotypeExtractor:
         # mean_gap 越大代表越不对称，因此用 1 减去它，得到正向的对称度指数
         mean_gap = float(np.mean(normalized_gaps)) if normalized_gaps else 0.0
         return 1.0 - mean_gap
+
+    def _extract_color_statistics(self, image: np.ndarray | None, detection: dict) -> dict:
+        if image is None or image.size == 0:
+            return {}
+
+        centers = np.asarray(detection.get('centers'), dtype=float)
+        if centers.size == 0:
+            return {}
+
+        height, width = image.shape[:2]
+        sampled_patches = []
+        for center in centers:
+            cx = int(round(float(center[0])))
+            cy = int(round(float(center[1])))
+            x0 = max(0, cx - self.patch_half_size)
+            x1 = min(width, cx + self.patch_half_size + 1)
+            y0 = max(0, cy - self.patch_half_size)
+            y1 = min(height, cy + self.patch_half_size + 1)
+            patch = image[y0:y1, x0:x1]
+            if patch.size == 0:
+                continue
+            sampled_patches.append(patch.reshape(-1, 3))
+
+        if not sampled_patches:
+            return {}
+
+        bgr_pixels = np.concatenate(sampled_patches, axis=0).astype(np.uint8)
+
+        hsv_pixels = cv2.cvtColor(bgr_pixels.reshape(-1, 1, 3), cv2.COLOR_BGR2HSV).reshape(-1, 3).astype(np.float32)
+
+        hue = hsv_pixels[:, 0] * 2.0
+        saturation = hsv_pixels[:, 1]
+
+        return {
+            'mean_hue_deg': float(np.mean(hue)),
+            'mean_saturation': float(np.mean(saturation)),
+            'std_hue': float(np.std(hue)),
+        }

@@ -659,7 +659,7 @@ async function handleClusterCountChange() {
         refs.clusterCountInput.value = nextCount;
         refs.clusterCountValue.textContent = nextCount;
         renderBatch(state.batchResult);
-        setStatus(`已更新为 ${nextCount} 类聚类结果`, 'success');
+        setStatus(`已更新为 ${nextCount} 簇聚类`, 'success');
     } catch (error) {
         state.batchProgress = null;
         setStatus(`重聚类失败：${error.message}`, 'error');
@@ -787,7 +787,11 @@ function renderSingleView() {
         return;
     }
 
-    const baseImageUrl = result.images.original;
+    const imageByView = {
+        spikelet: result.images.original,
+        skeleton_extract: result.images.original,
+    };
+    const baseImageUrl = imageByView[state.currentView] || result.images.original;
     const skeletonOverlay = result.skeleton_overlay || null;
     if (!baseImageUrl) {
         return;
@@ -991,10 +995,36 @@ function showTooltip(event, record) {
 function showTooltipHtml(event, title, lines) {
     refs.tooltip.innerHTML = `
         <h4>${escapeHtml(title)}</h4>
-        ${lines.map(line => `<p>${escapeHtml(line)}</p>`).join('')}
+        ${lines.map(line => renderTooltipLine(line)).join('')}
     `;
     refs.tooltip.classList.remove('hidden');
     moveTooltip(event);
+}
+
+function renderTooltipLine(rawLine) {
+    const text = String(rawLine ?? '');
+    const cnIndex = text.indexOf('：');
+    const enIndex = text.indexOf(':');
+    let separatorIndex = -1;
+
+    if (cnIndex >= 0 && enIndex >= 0) {
+        separatorIndex = Math.min(cnIndex, enIndex);
+    } else {
+        separatorIndex = Math.max(cnIndex, enIndex);
+    }
+
+    if (separatorIndex < 0) {
+        return `<p class="spikelet-tooltip__line">${escapeHtml(text)}</p>`;
+    }
+
+    const label = text.slice(0, separatorIndex).trim();
+    const value = text.slice(separatorIndex + 1).trim();
+    return `
+        <div class="spikelet-tooltip__kv">
+            <span class="spikelet-tooltip__kv-label">${escapeHtml(label)}</span>
+            <strong class="spikelet-tooltip__kv-value">${escapeHtml(value)}</strong>
+        </div>
+    `;
 }
 
 function moveTooltip(event) {
@@ -1144,6 +1174,9 @@ function renderSingleMetrics(result) {
         ['着生密度', formatMetric(ear.spikelet_density_per_cm, '/cm', ear.spikelet_density_px, '/px')],
         ['对称度指数', ear.symmetry_index.toFixed(4)],
         ['重心偏移度', ear.centroid_offset.toFixed(4)],
+        ['平均色相', `${Number(ear.mean_hue_deg ?? 0).toFixed(2)}°`],
+        ['平均饱和度', Number(ear.mean_saturation ?? 0).toFixed(2)],
+        ['色相标准差', Number(ear.std_hue ?? 0).toFixed(2)],
     ];
 
     refs.singleMetrics.innerHTML = metrics.map(([label, value]) => `
@@ -1602,6 +1635,9 @@ function renderClusterCompare(cluster) {
         { key: 'spikelet_density', label: '着生密度', unit: '', group: '穗级特征', groupClass: 'ear' },
         { key: 'mean_symmetry_index', label: '对称度', unit: '', group: '穗级特征', groupClass: 'ear' },
         { key: 'mean_centroid_offset', label: '重心偏移度', unit: '', group: '穗级特征', groupClass: 'ear' },
+        { key: 'mean_hue_deg', label: '平均色相', unit: '°', group: '穗级特征', groupClass: 'ear' },
+        { key: 'mean_saturation', label: '平均饱和度', unit: '', group: '穗级特征', groupClass: 'ear' },
+        { key: 'std_hue', label: '色相标准差', unit: '°', group: '穗级特征', groupClass: 'ear' },
     ];
     const metrics = [...spikeletMetrics, ...earMetrics];
 
@@ -1621,7 +1657,9 @@ function renderClusterCompare(cluster) {
             <div class="compare-bars-grid">
                 ${metrics.map(metric => {
                     const values = selected.map(item => Number(item.aggregate_metrics?.[metric.key] ?? 0));
+                    const minValue = Math.min(...values, 0);
                     const maxValue = Math.max(...values, 1e-6);
+                    const range = Math.max(maxValue - minValue, 1e-6);
                     return `
                         <div class="compare-metric compare-metric--compact">
                             <div class="compare-metric__head">
@@ -1630,11 +1668,12 @@ function renderClusterCompare(cluster) {
                             </div>
                             ${selected.map(item => {
                                 const value = Number(item.aggregate_metrics?.[metric.key] ?? 0);
+                                const normalizedWidth = ((value - minValue) / range) * 100;
                                 return `
                                     <div class="compare-bar">
                                         <div class="compare-bar__label"><i class="compare-bar__dot" style="background:${clusterColor(item.cluster_id)}"></i>第 ${item.cluster_id + 1} 类</div>
                                         <div class="compare-bar__track">
-                                            <span style="width:${(value / maxValue) * 100}%"></span>
+                                            <span style="width:${normalizedWidth}%"></span>
                                         </div>
                                         <div class="compare-bar__value">${formatClusterMetric(value, metric.unit)}</div>
                                     </div>
@@ -1919,8 +1958,11 @@ function renderClusterRadar(selected, metrics) {
     const angleStep = (Math.PI * 2) / metrics.length;
     const series = selected.map(item => {
         const points = metrics.map((metric, index) => {
-            const maxValue = Math.max(...selected.map(target => Number(target.aggregate_metrics?.[metric.key] ?? 0)), 1e-6);
-            const value = Number(item.aggregate_metrics?.[metric.key] ?? 0) / maxValue;
+            const values = selected.map(target => Number(target.aggregate_metrics?.[metric.key] ?? 0));
+            const minValue = Math.min(...values, 0);
+            const maxValue = Math.max(...values, 1e-6);
+            const range = Math.max(maxValue - minValue, 1e-6);
+            const value = (Number(item.aggregate_metrics?.[metric.key] ?? 0) - minValue) / range;
             const angle = -Math.PI / 2 + angleStep * index;
             const px = cx + Math.cos(angle) * radius * value;
             const py = cy + Math.sin(angle) * radius * value;
@@ -2003,6 +2045,9 @@ function getClusterMetricOptions(cluster) {
         { key: 'spikelet_density', label: '着生密度', group: 'ear', groupLabel: '穗级特征' },
         { key: 'mean_symmetry_index', label: '对称度', group: 'ear', groupLabel: '穗级特征' },
         { key: 'mean_centroid_offset', label: '重心偏移度', group: 'ear', groupLabel: '穗级特征' },
+        { key: 'mean_hue_deg', label: '平均色相', group: 'ear', groupLabel: '穗级特征' },
+        { key: 'mean_saturation', label: '平均饱和度', group: 'ear', groupLabel: '穗级特征' },
+        { key: 'std_hue', label: '色相标准差', group: 'ear', groupLabel: '穗级特征' },
     ];
     const availableMetrics = cluster?.clusters?.[0]?.aggregate_metrics || {};
     return preferredMetrics.filter(metric => Object.prototype.hasOwnProperty.call(availableMetrics, metric.key));
@@ -2112,6 +2157,9 @@ function getMetricLabel(key) {
         mean_spikelet_width_mm: '平均小穗宽度',
         mean_symmetry_index: '平均对称度',
         mean_centroid_offset: '平均重心偏移度',
+        mean_hue_deg: '平均色相',
+        mean_saturation: '平均饱和度',
+        std_hue: '色相标准差',
     };
     return labelMap[key] || null;
 }
@@ -2152,6 +2200,9 @@ function buildNineSampleMetricRows(ear) {
         { group: '穗级特征', label: '着生密度', value: formatMetric(safeEar.spikelet_density_per_cm, '/cm', safeEar.spikelet_density_px ?? 0, '/px') },
         { group: '穗级特征', label: '对称度', value: Number(safeEar.symmetry_index ?? 0).toFixed(4) },
         { group: '穗级特征', label: '重心偏移度', value: Number(safeEar.centroid_offset ?? 0).toFixed(4) },
+        { group: '穗级特征', label: '平均色相', value: `${Number(safeEar.mean_hue_deg ?? 0).toFixed(2)} °` },
+        { group: '穗级特征', label: '平均饱和度', value: Number(safeEar.mean_saturation ?? 0).toFixed(2) },
+        { group: '穗级特征', label: '色相标准差', value: Number(safeEar.std_hue ?? 0).toFixed(2) },
     ];
 }
 
@@ -2167,6 +2218,9 @@ function buildNineClusterMetricRows(clusterItem) {
         { group: '穗级特征', label: '着生密度', value: formatClusterMetric(metrics.spikelet_density, '') },
         { group: '穗级特征', label: '对称度', value: formatClusterMetric(metrics.mean_symmetry_index, '') },
         { group: '穗级特征', label: '重心偏移度', value: formatClusterMetric(metrics.mean_centroid_offset, '') },
+        { group: '穗级特征', label: '平均色相', value: formatClusterMetric(metrics.mean_hue_deg, '°') },
+        { group: '穗级特征', label: '平均饱和度', value: formatClusterMetric(metrics.mean_saturation, '') },
+        { group: '穗级特征', label: '色相标准差', value: formatClusterMetric(metrics.std_hue, '°') },
     ];
 }
 

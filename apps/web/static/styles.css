@@ -1398,7 +1398,7 @@ body.modal-open {
 
 .spikelet-tooltip {
     position: absolute;
-    min-width: 220px;
+    min-width: 180px;
     pointer-events: none;
     z-index: 10;
     padding: 14px;
@@ -1412,9 +1412,34 @@ body.modal-open {
     margin: 0 0 8px;
 }
 
-.spikelet-tooltip p {
+.spikelet-tooltip__line {
     margin: 6px 0;
     color: var(--muted);
+}
+
+.spikelet-tooltip__kv {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 18px;
+    margin: 6px 0;
+}
+
+.spikelet-tooltip__kv-label {
+    color: var(--muted);
+    font-size: 15px;
+    letter-spacing: 0.01em;
+    text-align: left;
+    flex: 1 1 auto;
+}
+
+.spikelet-tooltip__kv-value {
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
+    flex: 0 0 auto;
 }
 
 .metric-grid {

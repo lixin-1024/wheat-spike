@@ -48,6 +48,38 @@ class TestScaleCalibrator(unittest.TestCase):
         self.assertAlmostEqual(result['disc_diameter_px'], 100.0, delta=8.0)
         self.assertAlmostEqual(result['px_per_cm'], 20.0, delta=1.6)
 
+    def test_calibrate_with_colorchecker(self):
+        image = np.zeros((520, 720, 3), dtype=np.uint8)
+        cv2.rectangle(image, (40, 40), (660, 480), (18, 18, 18), -1)
+        cv2.circle(image, (110, 110), 42, (255, 255, 255), -1)
+
+        chart_x, chart_y = 120, 170
+        cell_w, cell_h = 70, 55
+        border = 16
+        cv2.rectangle(
+            image,
+            (chart_x - border, chart_y - border),
+            (chart_x + cell_w * 6 + border, chart_y + cell_h * 4 + border),
+            (110, 110, 110),
+            -1,
+        )
+
+        reference = ScaleCalibrator.COLORCHECKER_SRGB.astype(np.uint8)
+        for row in range(4):
+            for col in range(6):
+                rgb = reference[row, col]
+                bgr = tuple(int(v) for v in rgb[::-1])
+                x0 = chart_x + col * cell_w
+                y0 = chart_y + row * cell_h
+                cv2.rectangle(image, (x0, y0), (x0 + cell_w - 8, y0 + cell_h - 8), bgr, -1)
+
+        calibrator = ScaleCalibrator(disc_diameter_cm=5.0)
+        result = calibrator.calibrate(image)
+
+        self.assertIsNotNone(result['color_card_bbox'])
+        self.assertIsNotNone(result['color_matrix'])
+        self.assertLess(result['color_patch_error'], 25.0)
+
 
 class TestPhenotypeExtractor(unittest.TestCase):
     def setUp(self):
@@ -109,6 +141,10 @@ class TestPhenotypeExtractor(unittest.TestCase):
             'spikelet_density_per_cm',
             'mean_spikelet_length_mm',
             'mean_spikelet_width_mm',
+            'color_calibration_ok',
+            'mean_hue_deg',
+            'mean_saturation',
+            'std_hue',
         }
         self.assertEqual(set(ear.keys()), expected_keys)
 
@@ -193,8 +229,9 @@ class TestPipelinesAndClustering(unittest.TestCase):
         self.assertTrue((output_dir / "phenotype_workbook.xlsx").exists())
         self.assertIsNotNone(analysis['cluster'])
         self.assertTrue((output_dir / "cluster_embedding.png").exists())
-        self.assertTrue((output_dir / "sample_similarity_heatmap.png").exists())
         self.assertTrue((output_dir / "cluster_dendrogram.png").exists())
+        self.assertTrue((output_dir / "sample_0_corrected.jpg").exists())
+        self.assertTrue((output_dir / "sample_0_calibration.jpg").exists())
 
     def test_cluster_analyzer(self):
         analyzer = PhenotypeClusterAnalyzer(n_clusters=2)
