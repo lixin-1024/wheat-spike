@@ -1,3 +1,373 @@
+// ==================== i18n 翻译模块 ====================
+const I18N = {
+    lang: localStorage.getItem('wheat.lang') || 'zh',
+    translations: {
+        zh: {
+            // 页面标题
+            pageTitle: 'Wheat Phenolab',
+            heroTitle: '小麦麦穗表型智能分析平台',
+            heroSubtitle: '—— 让每一株麦穗，都有可计算的答案',
+            // 模式切换
+            modeSingle: '单株分析',
+            modeSingleSub: '精细画布 骨架提取',
+            modeBatch: '聚类分析',
+            modeBatchSub: '批量分析 聚类洞察',
+            // 上传区
+            dropzoneTitle: '拖拽或选择小麦图片开始分析',
+            dropzoneHint: '批量模式可一次上传多张图片',
+            dropzoneHintSingle: '单张模式下请选择 1 张图片',
+            fileListEmpty: '暂无文件，拖拽或点击上方按钮选择图片',
+            pickBtn: '选择图片',
+            // 状态卡片
+            statusIdle: '等待上传',
+            statusReady: '就绪',
+            statusRunning: '分析中',
+            statusSuccess: '分析完成',
+            statusError: '分析失败',
+            runBtn: '开始分析',
+            exportBtn: '导出表型分析结果',
+            // 批量状态
+            batchQueued: '等待进入分析队列',
+            batchAnalyzing: '正在分析 {file}',
+            batchClustering: '正在执行聚类与树状图计算',
+            batchCompleted: '批量分析与聚类完成',
+            batchError: '批量分析失败',
+            batchProcessing: '批量任务处理中',
+            batchProgressLabel: '批量分析中',
+            // 单株分析面板
+            panelSingle: '单株分析',
+            viewerTabSpikelet: '小穗检测',
+            viewerTabSkeleton: '骨架提取',
+            resetZoom: '重置',
+            // 指标名称
+            metricSpikeletLength: '平均小穗长度',
+            metricSpikeletWidth: '平均小穗宽度',
+            metricSpikeletAspectRatio: '平均小穗长宽比',
+            metricAttachmentAngle: '平均着生角',
+            metricSpikeLength: '穗长',
+            metricSpikeletCount: '小穗数',
+            metricSpikeletDensity: '着生密度',
+            metricSymmetry: '对称度指数',
+            metricCentroidOffset: '重心偏移度',
+            metricMeanHue: '平均色相',
+            metricMeanSaturation: '平均饱和度',
+            metricStdHue: '色相标准差',
+            // 小穗侧别
+            sideLeft: '左侧',
+            sideRight: '右侧',
+            // 骨架 tooltip
+            skeletonStemStart: '茎骨架起点',
+            skeletonStemEnd: '茎骨架终点',
+            skeletonStemFit: '茎骨架拟合曲线',
+            skeletonAbstract: '抽象骨架',
+            skeletonAbstractTip: '沿小穗基点拟合得到的主茎骨架曲线',
+            skeletonAbstractTip2: '去掉小穗末端毛刺后的抽象骨架',
+            tooltipSpikeletTitle: '小穗 #{order}',
+            tooltipLength: '长度',
+            tooltipWidth: '宽度',
+            tooltipAspectRatio: '长宽比',
+            tooltipAttachmentAngle: '着生角度',
+            tooltipSide: '侧别',
+            tooltipCoordinate: '坐标(O-左上): {value}',
+            tooltipVector: '方向向量(O-左上): {value}',
+            tooltipMagnitude: '大小: {value}',
+            tooltipDirectionAngle: '方向角(相对+x轴, 图像坐标系): {value}',
+            tooltipStartPoint: '起点: {value}',
+            tooltipEndPoint: '终点: {value}',
+            tooltipSpikeletBasePointTitle: '小穗基点 #{order}',
+            tooltipSpikeletTipPointTitle: '小穗顶点 #{order}',
+            tooltipStemMatchedPointTitle: '茎骨架对应点 #{order}',
+            tooltipSpikeletSkeletonTitle: '小穗骨架 #{order}',
+            tooltipBasePoint: '基点: {value}',
+            tooltipTipPoint: '顶点: {value}',
+            // 聚类分析面板
+            panelBatch: '聚类分析',
+            clusterCountLabel: '聚类簇数',
+            clusterScatter: '聚类散点图',
+            clusterDendrogram: '层次聚类树状图',
+            silhouetteScore: 'Silhouette',
+            clusterFilter: '聚类结果筛选',
+            sortBy: '排序',
+            filterBy: '筛选',
+            selectMetric: '请选择指标',
+            selectGroup: '未选择分组',
+            thresholdPlaceholder: '阈值，例如 5.0',
+            showMatchedOnly: '仅显示命中类',
+            // 簇卡片
+            sampleCount: '样本数',
+            addToCompare: '加入对比',
+            cancelCompare: '取消对比',
+            exportCluster: '导出',
+            clickToViewCluster: '点击查看该簇详情',
+            // 簇间比较
+            clusterCompare: '簇间比较',
+            clearCompare: '清空对比',
+            spikeletFeatures: '小穗级特征',
+            earFeatures: '穗级特征',
+            selectedClusters: '已选择 {count} 类簇',
+            compareNeedTwo: '至少选择 2 个类簇后展示多类对比图表。',
+            radarChartSpikelet: '雷达图 • 小穗级特征',
+            radarChartEar: '雷达图 • 穗级特征',
+            barChart: '柱状图',
+            clusterLabel: '第 {n} 类',
+            sampleCountText: '{count} 个样本',
+            clusterDetailTitleWithId: '第 {n} 类详情',
+            clusterSamplesCount: '样本数：{count}',
+            treeNodeCoverSamples: '树节点覆盖 {count} 个样本',
+            extraSamples: ' +{count} 个样本',
+            // 指标分组
+            groupSpikelet: '小穗级特征',
+            groupEar: '穗级特征',
+            // 模态框
+            previewTitle: '图片预览',
+            clusterDetailTitle: '聚类详情',
+            closeModal: '关闭',
+            // 文件操作
+            removeFile: '移除文件',
+            previewBtn: '预览',
+            // 错误信息
+            errorAnalysisFailed: '分析失败',
+            errorBatchStatusFailed: '批量状态获取失败',
+            errorBatchFailed: '批量分析失败',
+            errorBatchResultFailed: '批量结果获取失败',
+            errorReclusterFailed: '重聚类失败',
+            errorTaskUnavailable: '任务状态不可用',
+            errorLastBatchFailed: '上次批量任务失败：请重新上传后重试',
+            // 恢复提示
+            sessionRestoreTip: '检测到上次批量任务，是否恢复？',
+            sessionExpired: '批量结果已过期，请重新上传并发起分析',
+            // 其他
+            silelhoutteNA: 'N/A',
+            currentSample: '当前样本',
+            // setStatus 动态文本
+            analyzingSingle: '单张图片分析中...',
+            analyzingBatch: '批量分析与聚类中...',
+            singleComplete: '单张分析完成',
+            batchStarted: '批量任务已启动，正在分析中...',
+            analysisFailed: '分析失败：{error}',
+            batchFailed: '批量分析失败：{error}',
+            analysisCompleteExport: '分析完成，点击导出表型分析结果',
+            adjustingClusters: '正在调整聚类类别到 {count} 类...',
+            clustersUpdated: '已更新为 {count} 簇聚类',
+            reclusterFailed: '重聚类失败：{error}',
+            selectOneFile: '已选择 1 张图片，点击开始分析',
+            selectMultiFiles: '已选择 {count} 张图片，点击开始分析',
+            exportFailedNoRunId: '导出失败：缺少批量任务 run_id，请重新执行一次批量分析。',
+            restoringBatch: '已恢复上次批量任务，正在同步状态...',
+            taskExpired: '上次任务已过期或不存在，请重新上传后开始分析。',
+            lastBatchFailed: '上次批量任务失败：{error}',
+            restoreFailed: '任务恢复失败：{error}',
+        },
+        en: {
+            // 页面标题
+            pageTitle: 'Wheat Phenolab',
+            heroTitle: 'Wheat Ear Phenotype Analysis Platform',
+            heroSubtitle: '—— Every wheat ear deserves a computable answer',
+            // 模式切换
+            modeSingle: 'Single Analysis',
+            modeSingleSub: 'Fine Canvas · Skeleton Extraction',
+            modeBatch: 'Cluster Analysis',
+            modeBatchSub: 'Batch Processing · Cluster Insights',
+            // 上传区
+            dropzoneTitle: 'Drag & drop or select wheat images to start',
+            dropzoneHint: 'batch mode supports multiple images',
+            dropzoneHintSingle: 'Please select 1 image in single mode',
+            fileListEmpty: 'No files yet. Drag & drop or click above to select images',
+            pickBtn: 'Select Images',
+            // 状态卡片
+            statusIdle: 'Waiting for upload',
+            statusReady: 'Ready',
+            statusRunning: 'Analyzing',
+            statusSuccess: 'Analysis Complete',
+            statusError: 'Analysis Failed',
+            runBtn: 'Start Analysis',
+            exportBtn: 'Export Phenotype Results',
+            // 批量状态
+            batchQueued: 'Waiting in analysis queue',
+            batchAnalyzing: 'Analyzing {file}',
+            batchClustering: 'Performing clustering and dendrogram calculation',
+            batchCompleted: 'Batch analysis and clustering complete',
+            batchError: 'Batch analysis failed',
+            batchProcessing: 'Batch task processing',
+            batchProgressLabel: 'Batch analyzing',
+            // 单株分析面板
+            panelSingle: 'Single Analysis',
+            viewerTabSpikelet: 'Spikelet Detection',
+            viewerTabSkeleton: 'Skeleton Extraction',
+            resetZoom: 'Reset',
+            // 指标名称
+            metricSpikeletLength: 'Avg. Spikelet Length',
+            metricSpikeletWidth: 'Avg. Spikelet Width',
+            metricSpikeletAspectRatio: 'Avg. Spikelet L/W Ratio',
+            metricAttachmentAngle: 'Avg. Attachment Angle',
+            metricSpikeLength: 'Spike Length',
+            metricSpikeletCount: 'Spikelet Count',
+            metricSpikeletDensity: 'Spikelet Density',
+            metricSymmetry: 'Symmetry Index',
+            metricCentroidOffset: 'Centroid Offset',
+            metricMeanHue: 'Avg. Hue',
+            metricMeanSaturation: 'Avg. Saturation',
+            metricStdHue: 'Hue Std. Dev.',
+            // 小穗侧别
+            sideLeft: 'Left',
+            sideRight: 'Right',
+            // 骨架 tooltip
+            skeletonStemStart: 'Stem Skeleton Start',
+            skeletonStemEnd: 'Stem Skeleton End',
+            skeletonStemFit: 'Stem Skeleton Fit Curve',
+            skeletonAbstract: 'Abstract Skeleton',
+            skeletonAbstractTip: 'Main stem skeleton curve fitted along spikelet base points',
+            skeletonAbstractTip2: 'Abstract skeleton after removing spikelet tip burrs',
+            tooltipSpikeletTitle: 'Spikelet #{order}',
+            tooltipLength: 'Length',
+            tooltipWidth: 'Width',
+            tooltipAspectRatio: 'Aspect Ratio',
+            tooltipAttachmentAngle: 'Attachment Angle',
+            tooltipSide: 'Side',
+            tooltipCoordinate: 'Coordinate (origin top-left): {value}',
+            tooltipVector: 'Vector (origin top-left): {value}',
+            tooltipMagnitude: 'Magnitude: {value}',
+            tooltipDirectionAngle: 'Direction Angle (relative to +x, image coordinates): {value}',
+            tooltipStartPoint: 'Start Point: {value}',
+            tooltipEndPoint: 'End Point: {value}',
+            tooltipSpikeletBasePointTitle: 'Spikelet Base Point #{order}',
+            tooltipSpikeletTipPointTitle: 'Spikelet Tip Point #{order}',
+            tooltipStemMatchedPointTitle: 'Stem Matched Point #{order}',
+            tooltipSpikeletSkeletonTitle: 'Spikelet Skeleton #{order}',
+            tooltipBasePoint: 'Base Point: {value}',
+            tooltipTipPoint: 'Tip Point: {value}',
+            // 聚类分析面板
+            panelBatch: 'Cluster Analysis',
+            clusterCountLabel: 'Cluster Count',
+            clusterScatter: 'Cluster Scatter Plot',
+            clusterDendrogram: 'Hierarchical Clustering Dendrogram',
+            silhouetteScore: 'Silhouette',
+            clusterFilter: 'Cluster Results Filter',
+            sortBy: 'Sort',
+            filterBy: 'Filter',
+            selectMetric: 'Select metric',
+            selectGroup: 'No group selected',
+            thresholdPlaceholder: 'Threshold, e.g. 5.0',
+            showMatchedOnly: 'Show matched only',
+            // 簇卡片
+            sampleCount: 'Samples',
+            addToCompare: 'Add to Compare',
+            cancelCompare: 'Remove',
+            exportCluster: 'Export',
+            clickToViewCluster: 'Click to view cluster details',
+            // 簇间比较
+            clusterCompare: 'Cluster Comparison',
+            clearCompare: 'Clear All',
+            spikeletFeatures: 'Spikelet Features',
+            earFeatures: 'Ear Features',
+            selectedClusters: '{count} clusters selected',
+            compareNeedTwo: 'Select at least 2 clusters to show comparison charts.',
+            radarChartSpikelet: 'Radar Chart · Spikelet Features',
+            radarChartEar: 'Radar Chart · Ear Features',
+            barChart: 'Bar Chart',
+            clusterLabel: 'Cluster {n}',
+            sampleCountText: '{count} samples',
+            clusterDetailTitleWithId: 'Cluster {n} Details',
+            clusterSamplesCount: 'Samples: {count}',
+            treeNodeCoverSamples: 'Tree node covers {count} samples',
+            extraSamples: ' +{count} samples',
+            // 指标分组
+            groupSpikelet: 'Spikelet Features',
+            groupEar: 'Ear Features',
+            // 模态框
+            previewTitle: 'Image Preview',
+            clusterDetailTitle: 'Cluster Details',
+            closeModal: 'Close',
+            // 文件操作
+            removeFile: 'Remove file',
+            previewBtn: 'Preview',
+            // 错误信息
+            errorAnalysisFailed: 'Analysis failed',
+            errorBatchStatusFailed: 'Failed to get batch status',
+            errorBatchFailed: 'Batch analysis failed',
+            errorBatchResultFailed: 'Failed to get batch results',
+            errorReclusterFailed: 'Reclustering failed',
+            errorTaskUnavailable: 'Task status unavailable',
+            errorLastBatchFailed: 'Previous batch task failed: please re-upload and retry',
+            // 恢复提示
+            sessionRestoreTip: 'Previous batch task detected. Restore?',
+            sessionExpired: 'Batch results expired. Please re-upload and start analysis.',
+            // 其他
+            silelhoutteNA: 'N/A',
+            currentSample: 'current sample',
+            // setStatus 动态文本
+            analyzingSingle: 'Analyzing single image...',
+            analyzingBatch: 'Performing batch analysis and clustering...',
+            singleComplete: 'Single image analysis complete',
+            batchStarted: 'Batch task started, analyzing...',
+            analysisFailed: 'Analysis failed: {error}',
+            batchFailed: 'Batch analysis failed: {error}',
+            analysisCompleteExport: 'Analysis complete. Click Export Phenotype Results',
+            adjustingClusters: 'Adjusting to {count} clusters...',
+            clustersUpdated: 'Updated to {count} clusters',
+            reclusterFailed: 'Reclustering failed: {error}',
+            selectOneFile: '1 image selected. Click Start Analysis',
+            selectMultiFiles: '{count} images selected. Click Start Analysis',
+            exportFailedNoRunId: 'Export failed: No batch task run_id. Please run batch analysis again.',
+            restoringBatch: 'Restoring last batch task, syncing status...',
+            taskExpired: 'Previous task expired or not found. Please re-upload and start.',
+            lastBatchFailed: 'Previous batch task failed: {error}',
+            restoreFailed: 'Task restoration failed: {error}',
+        }
+    },
+    t(key, params = {}) {
+        let text = this.translations[this.lang][key] || key;
+        Object.keys(params).forEach(k => {
+            text = text.replace(`{${k}}`, params[k]);
+        });
+        return text;
+    },
+    setLang(lang) {
+        this.lang = lang;
+        localStorage.setItem('wheat.lang', lang);
+        document.documentElement.lang = lang;
+        this.updatePage();
+        this.updateLangSwitcherUI();
+    },
+    toggleLang() {
+        this.setLang(this.lang === 'zh' ? 'en' : 'zh');
+    },
+    updateLangSwitcherUI() {
+        const toggle = document.getElementById('langToggle');
+        const labels = document.querySelectorAll('.lang-toggle__label');
+        if (toggle && labels.length) {
+            const isZh = this.lang === 'zh';
+            toggle.checked = !isZh;
+            labels[0].classList.toggle('active', isZh);
+            labels[1].classList.toggle('active', !isZh);
+        }
+    },
+    updatePage() {
+        // 更新所有带 data-i18n 属性的元素
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (el.tagName === 'INPUT' && el.placeholder) {
+                el.placeholder = this.t(key);
+            } else {
+                el.textContent = this.t(key);
+            }
+        });
+        // 更新 title
+        document.title = this.t('pageTitle');
+        // 触发自定义事件，让业务逻辑可以响应语言切换
+        window.dispatchEvent(new CustomEvent('langChange', { detail: { lang: this.lang } }));
+    },
+    init() {
+        document.documentElement.lang = this.lang;
+        // 绑定语言切换器事件
+        const langToggle = document.getElementById('langToggle');
+        if (langToggle) {
+            langToggle.addEventListener('change', () => this.toggleLang());
+        }
+        this.updateLangSwitcherUI();
+    }
+};
+
 const state = {
     mode: 'single',
     files: [],
@@ -6,7 +376,7 @@ const state = {
     batchResult: null,
     batchRunId: null,
     batchStatusPoller: null,
-    statusText: '等待上传',
+    statusText: I18N.t('statusIdle'),
     statusType: 'idle',
     isAnalyzing: false,
     currentView: 'spikelet',
@@ -45,6 +415,7 @@ let panelTransitionToken = 0;
 const BATCH_SESSION_KEY = 'wheat.batch.session.v1';
 
 document.addEventListener('DOMContentLoaded', () => {
+    I18N.init();
     bindRefs();
     bindEvents();
     renderMode({ instant: true });
@@ -267,14 +638,32 @@ function bindEvents() {
     refs.clusterDendrogram.addEventListener('mouseout', handleDendrogramMouseOut);
 
     refs.clusterCompareSummary.addEventListener('click', handleCompareSummaryClick);
+
+    window.addEventListener('langChange', handleLanguageChange);
+}
+
+function handleLanguageChange() {
+    renderMode({ instant: true });
+    renderFiles();
+    renderStatusCard();
+    renderViewerTabs();
+    if (state.singleResult) {
+        renderSingleMetrics(state.singleResult);
+    }
+    if (state.batchResult) {
+        renderBatch(state.batchResult);
+    }
+    if (!refs.clusterModal.classList.contains('hidden') && Number.isInteger(state.selectedClusterId)) {
+        openClusterModal(state.selectedClusterId);
+    }
 }
 
 function renderMode(options = {}) {
     const { instant = false } = options;
     refs.modeButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === state.mode));
     refs.dropHint.textContent = state.mode === 'single'
-        ? '单张模式下请选择 1 张图片'
-        : '批量模式下可一次导入多张图片';
+        ? I18N.t('dropzoneHintSingle')
+        : I18N.t('dropzoneHint');
     refs.fileInput.multiple = state.mode === 'batch';
     refs.workspace.classList.toggle('workspace--single', state.mode === 'single');
     refs.workspace.classList.toggle('workspace--batch', state.mode === 'batch');
@@ -325,12 +714,12 @@ function renderFiles() {
                     <div class="file-item__size">${formatFileSize(file.size)}</div>
                 </div>
                 <div class="file-item__actions">
-                    <button class="file-action-btn" data-action="preview" data-index="${index}">预览</button>
-                    <button class="file-action-btn file-action-btn--danger" data-action="remove" data-index="${index}" aria-label="移除文件">×</button>
+                    <button class="file-action-btn" data-action="preview" data-index="${index}">${I18N.t('previewBtn')}</button>
+                    <button class="file-action-btn file-action-btn--danger" data-action="remove" data-index="${index}" aria-label="${I18N.t('removeFile')}">×</button>
                 </div>
             </div>
         `).join('')
-        : '<div class="file-list__empty">暂无文件，拖拽或点击上方按钮选择图片</div>';
+        : `<div class="file-list__empty">${I18N.t('fileListEmpty')}</div>`;
     if (!state.isAnalyzing) {
         setStatusBySelection();
     }
@@ -347,7 +736,7 @@ function renderStatusCard() {
     const modeTag = state.mode === 'single' ? 'SINGLE' : 'BATCH';
     const levelTag = state.statusType.toUpperCase();
     const timeTag = formatStatusTime(new Date());
-    const showTime = !(state.statusType === 'idle' && state.statusText === '等待上传');
+    const showTime = !(state.statusType === 'idle' && state.statusText === I18N.t('statusIdle'));
     const showInlineRunBtn = state.statusType === 'ready' && !state.isAnalyzing && state.files.length > 0;
     const showInlineExportBtn = state.mode === 'batch'
         && state.statusType === 'success'
@@ -357,28 +746,30 @@ function renderStatusCard() {
     let statusTextHtml = escapeHtml(state.statusText);
 
     if (showInlineRunBtn) {
+        const runBtnLabel = I18N.t('runBtn');
         const inlineButtonHtml = `
-            <button id="runBtn" class="status-run-btn status-run-btn--inline" aria-label="开始分析">
+            <button id="runBtn" class="status-run-btn status-run-btn--inline" aria-label="${runBtnLabel}">
                 <span class="status-run-btn__shine" aria-hidden="true"></span>
-                <span class="status-run-btn__text">开始分析</span>
+                <span class="status-run-btn__text">${runBtnLabel}</span>
             </button>
         `.trim();
-        if (statusTextHtml.includes('开始分析')) {
-            statusTextHtml = statusTextHtml.replace('开始分析', inlineButtonHtml);
+        if (statusTextHtml.includes(runBtnLabel)) {
+            statusTextHtml = statusTextHtml.replace(runBtnLabel, inlineButtonHtml);
         } else {
             statusTextHtml = `${statusTextHtml} ${inlineButtonHtml}`;
         }
     }
 
     if (showInlineExportBtn) {
+        const exportBtnLabel = I18N.t('exportBtn');
         const inlineButtonHtml = `
-            <button id="exportResultBtn" class="status-run-btn status-run-btn--inline status-run-btn--export" aria-label="导出表型分析结果">
+            <button id="exportResultBtn" class="status-run-btn status-run-btn--inline status-run-btn--export" aria-label="${exportBtnLabel}">
                 <span class="status-run-btn__shine" aria-hidden="true"></span>
-                <span class="status-run-btn__text">导出表型分析结果</span>
+                <span class="status-run-btn__text">${exportBtnLabel}</span>
             </button>
         `.trim();
-        if (statusTextHtml.includes('导出表型分析结果')) {
-            statusTextHtml = statusTextHtml.replace('导出表型分析结果', inlineButtonHtml);
+        if (statusTextHtml.includes(exportBtnLabel)) {
+            statusTextHtml = statusTextHtml.replace(exportBtnLabel, inlineButtonHtml);
         } else {
             statusTextHtml = `${statusTextHtml} ${inlineButtonHtml}`;
         }
@@ -394,7 +785,7 @@ function renderStatusCard() {
             <div class="status-card__text">${statusTextHtml}</div>
             ${showBatchProgress ? `
                 <div class="status-card__progress">
-                    <div class="status-card__progress-label">${escapeHtml(state.batchProgress.label || '批量分析中')}</div>
+                    <div class="status-card__progress-label">${escapeHtml(state.batchProgress.label || I18N.t('batchProgressLabel'))}</div>
                     <div class="status-card__progress-bar"><span style="width:${Math.max(0, Math.min(state.batchProgress.percent || 0, 100))}%"></span></div>
                     <div class="status-card__progress-meta">${state.batchProgress.current || 0} / ${state.batchProgress.total || 0}</div>
                 </div>
@@ -449,7 +840,7 @@ async function runAnalysis() {
     }
 
     state.isAnalyzing = true;
-    setStatus(state.mode === 'single' ? '单张图片分析中...' : '批量分析与聚类中...', 'running');
+    setStatus(state.mode === 'single' ? I18N.t('analyzingSingle') : I18N.t('analyzingBatch'), 'running');
 
     const formData = new FormData();
     const endpoint = state.mode === 'single' ? '/api/analyze-single' : '/api/analyze-batch';
@@ -472,16 +863,16 @@ async function runAnalysis() {
             renderViewerTabs();
             renderSingleView();
             renderSingleMetrics(payload);
-            setStatus('单张分析完成', 'success');
+            setStatus(I18N.t('singleComplete'), 'success');
         } else {
             state.batchRunId = payload.run_id;
             updateBatchProgress({ stage: 'queued', current: 0, total: state.files.length, percent: 0 });
             startBatchPolling(payload.run_id);
-            setStatus('批量任务已启动，正在分析中...', 'running');
+            setStatus(I18N.t('batchStarted'), 'running');
             saveBatchSession({ state: 'queued' });
         }
     } catch (error) {
-        setStatus(`分析失败：${error.message}`, 'error');
+        setStatus(I18N.t('analysisFailed', { error: error.message }), 'error');
     } finally {
         state.isAnalyzing = false;
         renderStatusCard();
@@ -522,7 +913,7 @@ function startBatchPolling(runId) {
             stopBatchPolling();
             state.isAnalyzing = false;
             state.batchProgress = null;
-            setStatus(`批量分析失败：${error.message}`, 'error');
+            setStatus(I18N.t('batchFailed', { error: error.message }), 'error');
             renderStatusCard();
             saveBatchSession({ state: 'error' });
         } finally {
@@ -559,7 +950,7 @@ async function fetchBatchResult(runId) {
     initializeBatchControls(payload.cluster);
     syncWorkbookExportButton();
     renderBatch(payload);
-    setStatus('分析完成，点击“导出表型分析结果”', 'success');
+    setStatus(I18N.t('analysisCompleteExport'), 'success');
     renderStatusCard();
     saveBatchSession({ state: 'completed' });
 }
@@ -579,14 +970,14 @@ function exportPhenotypeWorkbook() {
 
 function updateBatchProgress(status) {
     const stageMap = {
-        queued: '等待进入分析队列',
-        analyzing: `正在分析 ${status.current_file || '当前样本'}`,
-        clustering: '正在执行聚类与树状图计算',
-        completed: '批量分析与聚类完成',
-        error: '批量分析失败',
+        queued: I18N.t('batchQueued'),
+        analyzing: I18N.t('batchAnalyzing', { file: status.current_file || I18N.t('currentSample') }),
+        clustering: I18N.t('batchClustering'),
+        completed: I18N.t('batchCompleted'),
+        error: I18N.t('batchError'),
     };
     const nextProgress = {
-        label: stageMap[status.stage] || '批量任务处理中',
+        label: stageMap[status.stage] || I18N.t('batchProcessing'),
         percent: Math.max(0, Math.min(status.percent || 0, 100)),
         current: status.current || 0,
         total: status.total || 0,
@@ -644,7 +1035,7 @@ async function handleClusterCountChange() {
     try {
         refs.clusterCountInput.dataset.busy = '1';
         syncClusterCountControlState();
-        setStatus(`正在调整聚类类别到 ${nextCount} 类...`, 'running');
+        setStatus(I18N.t('adjustingClusters', { count: nextCount }), 'running');
         const response = await fetch('/api/recluster', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -659,10 +1050,10 @@ async function handleClusterCountChange() {
         refs.clusterCountInput.value = nextCount;
         refs.clusterCountValue.textContent = nextCount;
         renderBatch(state.batchResult);
-        setStatus(`已更新为 ${nextCount} 簇聚类`, 'success');
+        setStatus(I18N.t('clustersUpdated', { count: nextCount }), 'success');
     } catch (error) {
         state.batchProgress = null;
-        setStatus(`重聚类失败：${error.message}`, 'error');
+        setStatus(I18N.t('reclusterFailed', { error: error.message }), 'error');
     } finally {
         refs.clusterCountInput.dataset.busy = '0';
         syncClusterCountControlState();
@@ -721,7 +1112,7 @@ function openImagePreview(title, imageUrl) {
     if (!imageUrl) {
         return;
     }
-    refs.previewTitle.textContent = title || '图片预览';
+    refs.previewTitle.textContent = title || I18N.t('previewTitle');
     refs.previewImage.src = imageUrl;
     refs.previewModal.classList.remove('hidden');
     document.body.classList.add('modal-open');
@@ -737,14 +1128,14 @@ function closePreview() {
 
 function setStatusBySelection() {
     if (!state.files.length) {
-        setStatus('等待上传', 'idle');
+        setStatus(I18N.t('statusIdle'), 'idle');
         return;
     }
     if (state.mode === 'single') {
-        setStatus('已选择 1 张图片，点击“开始分析”', 'ready');
+        setStatus(I18N.t('selectOneFile'), 'ready');
         return;
     }
-    setStatus(`已选择 ${state.files.length} 张图片，点击“开始分析”`, 'ready');
+    setStatus(I18N.t('selectMultiFiles', { count: state.files.length }), 'ready');
 }
 
 function formatFileSize(bytes) {
@@ -983,12 +1374,12 @@ function renderOverlay() {
 }
 
 function showTooltip(event, record) {
-    showTooltipHtml(event, `小穗 #${record.order}`, [
-        `长度: ${record.length.toFixed(2)} px`,
-        `宽度: ${record.width.toFixed(2)} px`,
-        `长宽比: ${record.aspect_ratio.toFixed(3)}`,
-        `着生角度: ${record.attachment_angle.toFixed(2)}°`,
-        `侧别: ${record.side === 'left' ? '左侧' : '右侧'}`,
+    showTooltipHtml(event, I18N.t('tooltipSpikeletTitle', { order: record.order }), [
+        `${I18N.t('tooltipLength')}: ${record.length.toFixed(2)} px`,
+        `${I18N.t('tooltipWidth')}: ${record.width.toFixed(2)} px`,
+        `${I18N.t('tooltipAspectRatio')}: ${record.aspect_ratio.toFixed(3)}`,
+        `${I18N.t('tooltipAttachmentAngle')}: ${record.attachment_angle.toFixed(2)}°`,
+        `${I18N.t('tooltipSide')}: ${record.side === 'left' ? I18N.t('sideLeft') : I18N.t('sideRight')}`,
     ]);
 }
 
@@ -1070,16 +1461,16 @@ function getSkeletonNodeMeta(nodeId) {
     const abstractStem = state.skeletonOverlay.abstract_stem || {};
     if (nodeId === 'stem-start') {
         return {
-            title: '茎骨架起点',
-            lines: [`坐标(O-左上): ${formatCanvasPoint(abstractStem.start_point)}`],
+            title: I18N.t('skeletonStemStart'),
+            lines: [I18N.t('tooltipCoordinate', { value: formatCanvasPoint(abstractStem.start_point) })],
             pathIds: ['abstract'],
             nodeIds: ['stem-start'],
         };
     }
     if (nodeId === 'stem-end') {
         return {
-            title: '茎骨架终点',
-            lines: [`坐标(O-左上): ${formatCanvasPoint(abstractStem.end_point)}`],
+            title: I18N.t('skeletonStemEnd'),
+            lines: [I18N.t('tooltipCoordinate', { value: formatCanvasPoint(abstractStem.end_point) })],
             pathIds: ['abstract'],
             nodeIds: ['stem-end'],
         };
@@ -1099,17 +1490,17 @@ function getSkeletonNodeMeta(nodeId) {
 
     const pointMap = {
         base: {
-            title: `小穗基点 #${spikelet.order}`,
+            title: I18N.t('tooltipSpikeletBasePointTitle', { order: spikelet.order }),
             point: spikelet.lowest_point,
             pathIds: [`spikelet-${spikelet.index}`],
         },
         tip: {
-            title: `小穗顶点 #${spikelet.order}`,
+            title: I18N.t('tooltipSpikeletTipPointTitle', { order: spikelet.order }),
             point: spikelet.highest_point,
             pathIds: [`spikelet-${spikelet.index}`],
         },
         stem: {
-            title: `茎骨架对应点 #${spikelet.order}`,
+            title: I18N.t('tooltipStemMatchedPointTitle', { order: spikelet.order }),
             point: spikelet.stem_point,
             pathIds: [`spikelet-${spikelet.index}`],
         },
@@ -1122,8 +1513,8 @@ function getSkeletonNodeMeta(nodeId) {
     return {
         title: current.title,
         lines: [
-            `坐标(O-左上): ${formatCanvasPoint(current.point)}`,
-            `侧别: ${spikelet.side === 'left' ? '左侧' : '右侧'}`,
+            I18N.t('tooltipCoordinate', { value: formatCanvasPoint(current.point) }),
+            `${I18N.t('tooltipSide')}: ${spikelet.side === 'left' ? I18N.t('sideLeft') : I18N.t('sideRight')}`,
         ],
         pathIds: current.pathIds,
         nodeIds: [nodeId],
@@ -1132,7 +1523,7 @@ function getSkeletonNodeMeta(nodeId) {
 
 function showSkeletonPathTooltip(event, pathId) {
     if (pathId === 'stem') {
-        showTooltipHtml(event, '茎骨架拟合曲线', ['沿小穗基点拟合得到的主茎骨架曲线']);
+        showTooltipHtml(event, I18N.t('skeletonStemFit'), [I18N.t('skeletonAbstractTip')]);
         return;
     }
     if (pathId === 'abstract') {
@@ -1140,12 +1531,12 @@ function showSkeletonPathTooltip(event, pathId) {
         if (!abstractStem) {
             return;
         }
-        showTooltipHtml(event, '抽象骨架', [
-            `方向向量(O-左上): (${formatCanvasValue(abstractStem.vector?.[0] || 0)}, ${formatCanvasValue(abstractStem.vector?.[1] || 0)})`,
-            `大小: ${formatCanvasValue(abstractStem.length_px || 0)}`,
-            `方向角(相对+x轴, 图像坐标系): ${Number(abstractStem.angle_deg || 0).toFixed(2)}°`,
-            `起点: ${formatCanvasPoint(abstractStem.start_point)}`,
-            `终点: ${formatCanvasPoint(abstractStem.end_point)}`,
+        showTooltipHtml(event, I18N.t('skeletonAbstract'), [
+            I18N.t('tooltipVector', { value: `(${formatCanvasValue(abstractStem.vector?.[0] || 0)}, ${formatCanvasValue(abstractStem.vector?.[1] || 0)})` }),
+            I18N.t('tooltipMagnitude', { value: formatCanvasValue(abstractStem.length_px || 0) }),
+            I18N.t('tooltipDirectionAngle', { value: `${Number(abstractStem.angle_deg || 0).toFixed(2)}°` }),
+            I18N.t('tooltipStartPoint', { value: formatCanvasPoint(abstractStem.start_point) }),
+            I18N.t('tooltipEndPoint', { value: formatCanvasPoint(abstractStem.end_point) }),
         ]);
         return;
     }
@@ -1155,28 +1546,28 @@ function showSkeletonPathTooltip(event, pathId) {
     if (!spikelet) {
         return;
     }
-    showTooltipHtml(event, `小穗骨架 #${spikelet.order}`, [
-        `侧别: ${spikelet.side === 'left' ? '左侧' : '右侧'}`,
-        `基点: ${formatCanvasPoint(spikelet.lowest_point)}`,
-        `顶点: ${formatCanvasPoint(spikelet.highest_point)}`,
+    showTooltipHtml(event, I18N.t('tooltipSpikeletSkeletonTitle', { order: spikelet.order }), [
+        `${I18N.t('tooltipSide')}: ${spikelet.side === 'left' ? I18N.t('sideLeft') : I18N.t('sideRight')}`,
+        I18N.t('tooltipBasePoint', { value: formatCanvasPoint(spikelet.lowest_point) }),
+        I18N.t('tooltipTipPoint', { value: formatCanvasPoint(spikelet.highest_point) }),
     ]);
 }
 
 function renderSingleMetrics(result) {
     const ear = result.ear_pheno;
     const metrics = [
-        ['平均长度', formatMetric(ear.mean_spikelet_length_mm, 'mm', ear.mean_spikelet_length, 'px')],
-        ['平均宽度', formatMetric(ear.mean_spikelet_width_mm, 'mm', ear.mean_spikelet_width, 'px')],
-        ['平均长宽比', ear.mean_aspect_ratio.toFixed(3)],
-        ['平均着生角', `${ear.mean_attachment_angle.toFixed(2)}°`],
-        ['穗长', formatMetric(ear.spike_length_cm, 'cm', ear.spike_length_px, 'px')],
-        ['小穗数', `${ear.spikelet_count}`],
-        ['着生密度', formatMetric(ear.spikelet_density_per_cm, '/cm', ear.spikelet_density_px, '/px')],
-        ['对称度指数', ear.symmetry_index.toFixed(4)],
-        ['重心偏移度', ear.centroid_offset.toFixed(4)],
-        ['平均色相', `${Number(ear.mean_hue_deg ?? 0).toFixed(2)}°`],
-        ['平均饱和度', Number(ear.mean_saturation ?? 0).toFixed(2)],
-        ['色相标准差', Number(ear.std_hue ?? 0).toFixed(2)],
+        [I18N.t('metricSpikeletLength'), formatMetric(ear.mean_spikelet_length_mm, 'mm', ear.mean_spikelet_length, 'px')],
+        [I18N.t('metricSpikeletWidth'), formatMetric(ear.mean_spikelet_width_mm, 'mm', ear.mean_spikelet_width, 'px')],
+        [I18N.t('metricSpikeletAspectRatio'), ear.mean_aspect_ratio.toFixed(3)],
+        [I18N.t('metricAttachmentAngle'), `${ear.mean_attachment_angle.toFixed(2)}°`],
+        [I18N.t('metricSpikeLength'), formatMetric(ear.spike_length_cm, 'cm', ear.spike_length_px, 'px')],
+        [I18N.t('metricSpikeletCount'), `${ear.spikelet_count}`],
+        [I18N.t('metricSpikeletDensity'), formatMetric(ear.spikelet_density_per_cm, '/cm', ear.spikelet_density_px, '/px')],
+        [I18N.t('metricSymmetry'), ear.symmetry_index.toFixed(4)],
+        [I18N.t('metricCentroidOffset'), ear.centroid_offset.toFixed(4)],
+        [I18N.t('metricMeanHue'), `${Number(ear.mean_hue_deg ?? 0).toFixed(2)}°`],
+        [I18N.t('metricMeanSaturation'), Number(ear.mean_saturation ?? 0).toFixed(2)],
+        [I18N.t('metricStdHue'), Number(ear.std_hue ?? 0).toFixed(2)],
     ];
 
     refs.singleMetrics.innerHTML = metrics.map(([label, value]) => `
@@ -1467,23 +1858,25 @@ function renderClusterCards(cluster) {
     refs.clusterCards.innerHTML = cards.map(item => {
         const active = state.selectedClusterId === item.cluster_id || state.hoveredClusterId === item.cluster_id;
         const inComparison = state.comparisonClusterIds.includes(item.cluster_id);
+        const clusterLabel = I18N.lang === 'zh' ? `第 ${item.cluster_id + 1} 类` : `Cluster ${item.cluster_id + 1}`;
+        const sampleCountText = I18N.lang === 'zh' ? `${item.sample_count} 个样本` : `${item.sample_count} samples`;
         return `
             <article class="cluster-card ${active ? 'is-active' : ''} ${item.__matched ? '' : 'is-muted'}" data-cluster-id="${item.cluster_id}">
                 <div class="cluster-card__eyebrow">Cluster ${item.cluster_id + 1}</div>
                 <div class="cluster-card__header">
                     <div>
-                        <h3>第 ${item.cluster_id + 1} 类</h3>
-                        <p>${item.sample_count} 个样本</p>
+                        <h3>${clusterLabel}</h3>
+                        <p>${sampleCountText}</p>
                     </div>
                     <div class="cluster-card__badge">${formatClusterMetric(item.aggregate_metrics[state.batchSortMetric])}</div>
                 </div>
                 <div class="cluster-card__cover">
                     ${item.representative_image ? `<img src="${item.representative_image}" alt="cluster ${item.cluster_id} representative">` : '<div class="cluster-card__cover-empty">No Image</div>'}
                 </div>
-                <div class="cluster-card__hint">点击查看该簇详情</div>
+                <div class="cluster-card__hint" data-i18n="clickToViewCluster">${I18N.t('clickToViewCluster')}</div>
                 <div class="cluster-card__actions">
                     <button class="ghost-btn cluster-card__action cluster-card__action--compare ${inComparison ? 'is-active' : ''}" data-action="compare" data-cluster-id="${item.cluster_id}">
-                        ${inComparison ? '取消对比' : '加入对比'}
+                        ${inComparison ? I18N.t('cancelCompare') : I18N.t('addToCompare')}
                     </button>
                     <button class="ghost-btn cluster-card__action cluster-card__action--export" data-action="export" data-cluster-id="${item.cluster_id}">
                         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -1492,7 +1885,7 @@ function renderClusterCards(cluster) {
                             <path d="M5 17H19"/>
                             <path d="M7 21H17"/>
                         </svg>
-                        <span>导出</span>
+                        <span>${I18N.t('exportCluster')}</span>
                     </button>
                 </div>
             </article>
@@ -1587,7 +1980,7 @@ function toggleClusterComparison(clusterId) {
 function exportCluster(clusterId) {
     const runId = state.batchRunId || state.batchResult?.run_id;
     if (!runId) {
-        setStatus('导出失败：缺少批量任务 run_id，请重新执行一次批量分析。', 'error');
+        setStatus(I18N.t('exportFailedNoRunId'), 'error');
         renderStatusCard();
         return;
     }
@@ -1605,55 +1998,61 @@ function renderClusterCompare(cluster) {
     }
 
     refs.clusterCompare.classList.remove('hidden');
+    const selectedCountText = I18N.t('selectedClusters', { count: selected.length });
+    const clusterPillLabel = (item) => {
+        const clusterLabel = I18N.lang === 'zh' ? `第 ${item.cluster_id + 1} 类` : I18N.t('clusterLabel', { n: item.cluster_id + 1 });
+        const sampleText = I18N.lang === 'zh' ? `${item.sample_count} 个样本` : I18N.t('sampleCountText', { count: item.sample_count });
+        return `${clusterLabel} · ${sampleText}`;
+    };
     refs.clusterCompareSummary.innerHTML = `
         <div class="cluster-compare__summary-head">
-            <div class="cluster-compare__summary-title">已选择 ${selected.length} 类簇</div>
-            <button class="ghost-btn cluster-compare__clear" id="clearCompareBtn">清空对比</button>
+            <div class="cluster-compare__summary-title">${selectedCountText}</div>
+            <button class="ghost-btn cluster-compare__clear" id="clearCompareBtn">${I18N.t('clearCompare')}</button>
         </div>
         <div class="cluster-compare__summary-pills">
             ${selected.map(item => `
-                <button class="cluster-compare__pill" data-cluster-id="${item.cluster_id}">第 ${item.cluster_id + 1} 类 · ${item.sample_count} 个样本 <span class="cluster-compare__pill-close" aria-hidden="true">×</span></button>
+                <button class="cluster-compare__pill" data-cluster-id="${item.cluster_id}">${clusterPillLabel(item)} <span class="cluster-compare__pill-close" aria-hidden="true">×</span></button>
             `).join('')}
         </div>
     `;
 
     if (selected.length < 2) {
-        refs.clusterCompareChart.innerHTML = '<div class="compare-empty">至少选择 2 个类簇后展示多类对比图表。</div>';
+        refs.clusterCompareChart.innerHTML = `<div class="compare-empty">${I18N.t('compareNeedTwo')}</div>`;
         refs.clusterCompareGallery.innerHTML = '';
         return;
     }
 
     const spikeletMetrics = [
-        { key: 'mean_spikelet_length_mm', label: '平均小穗长度', unit: 'mm', group: '小穗级特征', groupClass: 'spikelet' },
-        { key: 'mean_spikelet_width_mm', label: '平均小穗宽度', unit: 'mm', group: '小穗级特征', groupClass: 'spikelet' },
-        { key: 'mean_aspect_ratio', label: '平均小穗长宽比', unit: '', group: '小穗级特征', groupClass: 'spikelet' },
-        { key: 'mean_attachment_angle', label: '平均着生角', unit: '°', group: '小穗级特征', groupClass: 'spikelet' },
+        { key: 'mean_spikelet_length_mm', label: I18N.t('metricSpikeletLength'), unit: 'mm', group: I18N.t('groupSpikelet'), groupClass: 'spikelet' },
+        { key: 'mean_spikelet_width_mm', label: I18N.t('metricSpikeletWidth'), unit: 'mm', group: I18N.t('groupSpikelet'), groupClass: 'spikelet' },
+        { key: 'mean_aspect_ratio', label: I18N.t('metricSpikeletAspectRatio'), unit: '', group: I18N.t('groupSpikelet'), groupClass: 'spikelet' },
+        { key: 'mean_attachment_angle', label: I18N.t('metricAttachmentAngle'), unit: '°', group: I18N.t('groupSpikelet'), groupClass: 'spikelet' },
     ];
     const earMetrics = [
-        { key: 'mean_spike_length_cm', label: '穗长', unit: 'cm', group: '穗级特征', groupClass: 'ear' },
-        { key: 'spikelet_count', label: '小穗数', unit: '', group: '穗级特征', groupClass: 'ear' },
-        { key: 'spikelet_density', label: '着生密度', unit: '', group: '穗级特征', groupClass: 'ear' },
-        { key: 'mean_symmetry_index', label: '对称度', unit: '', group: '穗级特征', groupClass: 'ear' },
-        { key: 'mean_centroid_offset', label: '重心偏移度', unit: '', group: '穗级特征', groupClass: 'ear' },
-        { key: 'mean_hue_deg', label: '平均色相', unit: '°', group: '穗级特征', groupClass: 'ear' },
-        { key: 'mean_saturation', label: '平均饱和度', unit: '', group: '穗级特征', groupClass: 'ear' },
-        { key: 'std_hue', label: '色相标准差', unit: '°', group: '穗级特征', groupClass: 'ear' },
+        { key: 'mean_spike_length_cm', label: I18N.t('metricSpikeLength'), unit: 'cm', group: I18N.t('groupEar'), groupClass: 'ear' },
+        { key: 'spikelet_count', label: I18N.t('metricSpikeletCount'), unit: '', group: I18N.t('groupEar'), groupClass: 'ear' },
+        { key: 'spikelet_density', label: I18N.t('metricSpikeletDensity'), unit: '', group: I18N.t('groupEar'), groupClass: 'ear' },
+        { key: 'mean_symmetry_index', label: I18N.t('metricSymmetry'), unit: '', group: I18N.t('groupEar'), groupClass: 'ear' },
+        { key: 'mean_centroid_offset', label: I18N.t('metricCentroidOffset'), unit: '', group: I18N.t('groupEar'), groupClass: 'ear' },
+        { key: 'mean_hue_deg', label: I18N.t('metricMeanHue'), unit: '°', group: I18N.t('groupEar'), groupClass: 'ear' },
+        { key: 'mean_saturation', label: I18N.t('metricMeanSaturation'), unit: '', group: I18N.t('groupEar'), groupClass: 'ear' },
+        { key: 'std_hue', label: I18N.t('metricStdHue'), unit: '°', group: I18N.t('groupEar'), groupClass: 'ear' },
     ];
     const metrics = [...spikeletMetrics, ...earMetrics];
 
     refs.clusterCompareChart.innerHTML = `
         <div class="compare-radar-grid">
             <div class="compare-radar-shell">
-                <div class="compare-radar__title">雷达图 • 小穗级特征</div>
+                <div class="compare-radar__title">${I18N.t('radarChartSpikelet')}</div>
                 ${renderClusterRadar(selected, spikeletMetrics)}
             </div>
             <div class="compare-radar-shell">
-                <div class="compare-radar__title">雷达图 • 穗级特征</div>
+                <div class="compare-radar__title">${I18N.t('radarChartEar')}</div>
                 ${renderClusterRadar(selected, earMetrics)}
             </div>
         </div>
         <div class="compare-bars-shell">
-            <div class="compare-bars-shell__title">柱状图</div>
+            <div class="compare-bars-shell__title">${I18N.t('barChart')}</div>
             <div class="compare-bars-grid">
                 ${metrics.map(metric => {
                     const values = selected.map(item => Number(item.aggregate_metrics?.[metric.key] ?? 0));
@@ -1669,9 +2068,10 @@ function renderClusterCompare(cluster) {
                             ${selected.map(item => {
                                 const value = Number(item.aggregate_metrics?.[metric.key] ?? 0);
                                 const normalizedWidth = ((value - minValue) / range) * 100;
+                                const barClusterLabel = I18N.lang === 'zh' ? `第 ${item.cluster_id + 1} 类` : I18N.t('clusterLabel', { n: item.cluster_id + 1 });
                                 return `
                                     <div class="compare-bar">
-                                        <div class="compare-bar__label"><i class="compare-bar__dot" style="background:${clusterColor(item.cluster_id)}"></i>第 ${item.cluster_id + 1} 类</div>
+                                        <div class="compare-bar__label"><i class="compare-bar__dot" style="background:${clusterColor(item.cluster_id)}"></i>${barClusterLabel}</div>
                                         <div class="compare-bar__track">
                                             <span style="width:${normalizedWidth}%"></span>
                                         </div>
@@ -1752,7 +2152,7 @@ async function restoreBatchSession() {
     refs.clusterFilterValue.value = state.batchFilterValue;
     refs.clusterHideUnmatched.checked = state.batchHideUnmatched;
 
-    setStatus('已恢复上次批量任务，正在同步状态...', 'running');
+    setStatus(I18N.t('restoringBatch'), 'running');
     renderStatusCard();
 
     try {
@@ -1763,11 +2163,11 @@ async function restoreBatchSession() {
                 clearBatchSession();
                 state.batchRunId = null;
                 state.batchProgress = null;
-                setStatus('上次任务已过期或不存在，请重新上传后开始分析。', 'idle');
+                setStatus(I18N.t('taskExpired'), 'idle');
                 renderStatusCard();
                 return;
             }
-            throw new Error(status.error || '任务状态不可用');
+            throw new Error(status.error || I18N.t('errorTaskUnavailable'));
         }
         updateBatchProgress(status);
         if (status.state === 'completed') {
@@ -1775,7 +2175,7 @@ async function restoreBatchSession() {
             return;
         }
         if (status.state === 'error') {
-            setStatus(`上次批量任务失败：${status.error || '请重新上传后重试'}`, 'error');
+            setStatus(I18N.t('lastBatchFailed', { error: status.error || I18N.t('errorLastBatchFailed') }), 'error');
             renderStatusCard();
             saveBatchSession({ state: 'error' });
             return;
@@ -1785,7 +2185,7 @@ async function restoreBatchSession() {
         clearBatchSession();
         state.batchRunId = null;
         state.batchProgress = null;
-        setStatus(`任务恢复失败：${error.message}`, 'error');
+        setStatus(I18N.t('restoreFailed', { error: error.message }), 'error');
         renderStatusCard();
     }
 }
@@ -2009,7 +2409,7 @@ function renderClusterRadar(selected, metrics) {
             `).join('')}
         </svg>
         <div class="compare-radar__legend">
-            ${selected.map(item => `<span><i style="background:${clusterColor(item.cluster_id)}"></i>第 ${item.cluster_id + 1} 类</span>`).join('')}
+            ${selected.map(item => `<span><i style="background:${clusterColor(item.cluster_id)}"></i>${I18N.t('clusterLabel', { n: item.cluster_id + 1 })}</span>`).join('')}
         </div>
     `;
 }
@@ -2036,19 +2436,23 @@ function buildResultMap(results) {
 
 function getClusterMetricOptions(cluster) {
     const preferredMetrics = [
-        { key: 'mean_spikelet_length_mm', label: '平均小穗长度', group: 'spikelet', groupLabel: '小穗级特征' },
-        { key: 'mean_spikelet_width_mm', label: '平均小穗宽度', group: 'spikelet', groupLabel: '小穗级特征' },
-        { key: 'mean_aspect_ratio', label: '平均小穗长宽比', group: 'spikelet', groupLabel: '小穗级特征' },
-        { key: 'mean_attachment_angle', label: '平均着生角', group: 'spikelet', groupLabel: '小穗级特征' },
-        { key: 'mean_spike_length_cm', label: '穗长', group: 'ear', groupLabel: '穗级特征' },
-        { key: 'spikelet_count', label: '小穗数', group: 'ear', groupLabel: '穗级特征' },
-        { key: 'spikelet_density', label: '着生密度', group: 'ear', groupLabel: '穗级特征' },
-        { key: 'mean_symmetry_index', label: '对称度', group: 'ear', groupLabel: '穗级特征' },
-        { key: 'mean_centroid_offset', label: '重心偏移度', group: 'ear', groupLabel: '穗级特征' },
-        { key: 'mean_hue_deg', label: '平均色相', group: 'ear', groupLabel: '穗级特征' },
-        { key: 'mean_saturation', label: '平均饱和度', group: 'ear', groupLabel: '穗级特征' },
-        { key: 'std_hue', label: '色相标准差', group: 'ear', groupLabel: '穗级特征' },
-    ];
+        { key: 'mean_spikelet_length_mm', labelKey: 'metricSpikeletLength', group: 'spikelet', groupLabelKey: 'groupSpikelet' },
+        { key: 'mean_spikelet_width_mm', labelKey: 'metricSpikeletWidth', group: 'spikelet', groupLabelKey: 'groupSpikelet' },
+        { key: 'mean_aspect_ratio', labelKey: 'metricSpikeletAspectRatio', group: 'spikelet', groupLabelKey: 'groupSpikelet' },
+        { key: 'mean_attachment_angle', labelKey: 'metricAttachmentAngle', group: 'spikelet', groupLabelKey: 'groupSpikelet' },
+        { key: 'mean_spike_length_cm', labelKey: 'metricSpikeLength', group: 'ear', groupLabelKey: 'groupEar' },
+        { key: 'spikelet_count', labelKey: 'metricSpikeletCount', group: 'ear', groupLabelKey: 'groupEar' },
+        { key: 'spikelet_density', labelKey: 'metricSpikeletDensity', group: 'ear', groupLabelKey: 'groupEar' },
+        { key: 'mean_symmetry_index', labelKey: 'metricSymmetry', group: 'ear', groupLabelKey: 'groupEar' },
+        { key: 'mean_centroid_offset', labelKey: 'metricCentroidOffset', group: 'ear', groupLabelKey: 'groupEar' },
+        { key: 'mean_hue_deg', labelKey: 'metricMeanHue', group: 'ear', groupLabelKey: 'groupEar' },
+        { key: 'mean_saturation', labelKey: 'metricMeanSaturation', group: 'ear', groupLabelKey: 'groupEar' },
+        { key: 'std_hue', labelKey: 'metricStdHue', group: 'ear', groupLabelKey: 'groupEar' },
+    ].map(m => ({
+        ...m,
+        label: I18N.t(m.labelKey),
+        groupLabel: I18N.t(m.groupLabelKey)
+    }));
     const availableMetrics = cluster?.clusters?.[0]?.aggregate_metrics || {};
     return preferredMetrics.filter(metric => Object.prototype.hasOwnProperty.call(availableMetrics, metric.key));
 }
@@ -2117,9 +2521,9 @@ function updateMetricCascadeTriggerLabel(target) {
     const metricKey = target === 'sort' ? state.batchSortMetric : state.batchFilterMetric;
     const metric = state.clusterMetricOptions.find(item => item.key === metricKey);
     const trigger = target === 'sort' ? refs.clusterSortTrigger : refs.clusterFilterTrigger;
-    const prefix = target === 'sort' ? '排序' : '筛选';
-    const groupLabel = metric?.groupLabel || '未选择分组';
-    const label = metric?.label || '请选择指标';
+    const prefix = target === 'sort' ? I18N.t('sortBy') : I18N.t('filterBy');
+    const groupLabel = metric?.groupLabel || I18N.t('selectGroup');
+    const label = metric?.label || I18N.t('selectMetric');
     trigger.innerHTML = `
         <span class="cascade-select__prefix">${prefix}</span>
         <span class="cascade-select__value">${groupLabel} / ${label}</span>
@@ -2141,27 +2545,28 @@ function closeMetricCascadeMenus() {
 }
 
 function getMetricLabel(key) {
-    const labelMap = {
-        spikelet_count: '小穗数',
-        mean_spikelet_length: '平均小穗长度',
-        mean_spikelet_width: '平均小穗宽度',
-        mean_aspect_ratio: '平均长宽比',
-        mean_attachment_angle: '平均着生角',
-        spike_length: '穗长',
-        spikelet_density: '小穗密度',
-        symmetry_index: '对称度',
-        centroid_offset: '重心偏移度',
-        spike_length_cm: '穗长',
-        mean_spike_length_cm: '平均穗长',
-        mean_spikelet_length_mm: '平均小穗长度',
-        mean_spikelet_width_mm: '平均小穗宽度',
-        mean_symmetry_index: '平均对称度',
-        mean_centroid_offset: '平均重心偏移度',
-        mean_hue_deg: '平均色相',
-        mean_saturation: '平均饱和度',
-        std_hue: '色相标准差',
+    const labelKeyMap = {
+        spikelet_count: 'metricSpikeletCount',
+        mean_spikelet_length: 'metricSpikeletLength',
+        mean_spikelet_width: 'metricSpikeletWidth',
+        mean_aspect_ratio: 'metricSpikeletAspectRatio',
+        mean_attachment_angle: 'metricAttachmentAngle',
+        spike_length: 'metricSpikeLength',
+        spikelet_density: 'metricSpikeletDensity',
+        symmetry_index: 'metricSymmetry',
+        centroid_offset: 'metricCentroidOffset',
+        spike_length_cm: 'metricSpikeLength',
+        mean_spike_length_cm: 'metricSpikeLength',
+        mean_spikelet_length_mm: 'metricSpikeletLength',
+        mean_spikelet_width_mm: 'metricSpikeletWidth',
+        mean_symmetry_index: 'metricSymmetry',
+        mean_centroid_offset: 'metricCentroidOffset',
+        mean_hue_deg: 'metricMeanHue',
+        mean_saturation: 'metricMeanSaturation',
+        std_hue: 'metricStdHue',
     };
-    return labelMap[key] || null;
+    const labelKey = labelKeyMap[key];
+    return labelKey ? I18N.t(labelKey) : null;
 }
 
 function getVisibleClusters(cluster) {
@@ -2191,42 +2596,42 @@ function formatClusterMetric(value, unit = '') {
 function buildNineSampleMetricRows(ear) {
     const safeEar = ear || {};
     return [
-        { group: '小穗级特征', label: '平均小穗长度', value: formatMetric(safeEar.mean_spikelet_length_mm, 'mm', safeEar.mean_spikelet_length ?? 0, 'px') },
-        { group: '小穗级特征', label: '平均小穗宽度', value: formatMetric(safeEar.mean_spikelet_width_mm, 'mm', safeEar.mean_spikelet_width ?? 0, 'px') },
-        { group: '小穗级特征', label: '平均小穗长宽比', value: Number(safeEar.mean_aspect_ratio ?? 0).toFixed(3) },
-        { group: '小穗级特征', label: '平均着生角', value: `${Number(safeEar.mean_attachment_angle ?? 0).toFixed(2)} °` },
-        { group: '穗级特征', label: '穗长', value: formatMetric(safeEar.spike_length_cm, 'cm', safeEar.spike_length_px ?? 0, 'px') },
-        { group: '穗级特征', label: '小穗数', value: String(Math.round(Number(safeEar.spikelet_count ?? 0))) },
-        { group: '穗级特征', label: '着生密度', value: formatMetric(safeEar.spikelet_density_per_cm, '/cm', safeEar.spikelet_density_px ?? 0, '/px') },
-        { group: '穗级特征', label: '对称度', value: Number(safeEar.symmetry_index ?? 0).toFixed(4) },
-        { group: '穗级特征', label: '重心偏移度', value: Number(safeEar.centroid_offset ?? 0).toFixed(4) },
-        { group: '穗级特征', label: '平均色相', value: `${Number(safeEar.mean_hue_deg ?? 0).toFixed(2)} °` },
-        { group: '穗级特征', label: '平均饱和度', value: Number(safeEar.mean_saturation ?? 0).toFixed(2) },
-        { group: '穗级特征', label: '色相标准差', value: Number(safeEar.std_hue ?? 0).toFixed(2) },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricSpikeletLength'), value: formatMetric(safeEar.mean_spikelet_length_mm, 'mm', safeEar.mean_spikelet_length ?? 0, 'px') },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricSpikeletWidth'), value: formatMetric(safeEar.mean_spikelet_width_mm, 'mm', safeEar.mean_spikelet_width ?? 0, 'px') },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricSpikeletAspectRatio'), value: Number(safeEar.mean_aspect_ratio ?? 0).toFixed(3) },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricAttachmentAngle'), value: `${Number(safeEar.mean_attachment_angle ?? 0).toFixed(2)} °` },
+        { group: I18N.t('groupEar'), label: I18N.t('metricSpikeLength'), value: formatMetric(safeEar.spike_length_cm, 'cm', safeEar.spike_length_px ?? 0, 'px') },
+        { group: I18N.t('groupEar'), label: I18N.t('metricSpikeletCount'), value: String(Math.round(Number(safeEar.spikelet_count ?? 0))) },
+        { group: I18N.t('groupEar'), label: I18N.t('metricSpikeletDensity'), value: formatMetric(safeEar.spikelet_density_per_cm, '/cm', safeEar.spikelet_density_px ?? 0, '/px') },
+        { group: I18N.t('groupEar'), label: I18N.t('metricSymmetry'), value: Number(safeEar.symmetry_index ?? 0).toFixed(4) },
+        { group: I18N.t('groupEar'), label: I18N.t('metricCentroidOffset'), value: Number(safeEar.centroid_offset ?? 0).toFixed(4) },
+        { group: I18N.t('groupEar'), label: I18N.t('metricMeanHue'), value: `${Number(safeEar.mean_hue_deg ?? 0).toFixed(2)} °` },
+        { group: I18N.t('groupEar'), label: I18N.t('metricMeanSaturation'), value: Number(safeEar.mean_saturation ?? 0).toFixed(2) },
+        { group: I18N.t('groupEar'), label: I18N.t('metricStdHue'), value: Number(safeEar.std_hue ?? 0).toFixed(2) },
     ];
 }
 
 function buildNineClusterMetricRows(clusterItem) {
     const metrics = clusterItem?.aggregate_metrics || {};
     return [
-        { group: '小穗级特征', label: '平均小穗长度', value: formatClusterMetric(metrics.mean_spikelet_length_mm, 'mm') },
-        { group: '小穗级特征', label: '平均小穗宽度', value: formatClusterMetric(metrics.mean_spikelet_width_mm, 'mm') },
-        { group: '小穗级特征', label: '平均小穗长宽比', value: formatClusterMetric(metrics.mean_aspect_ratio, '') },
-        { group: '小穗级特征', label: '平均着生角', value: formatClusterMetric(metrics.mean_attachment_angle, '°') },
-        { group: '穗级特征', label: '穗长', value: formatClusterMetric(metrics.mean_spike_length_cm, 'cm') },
-        { group: '穗级特征', label: '小穗数', value: formatClusterMetric(metrics.spikelet_count, '') },
-        { group: '穗级特征', label: '着生密度', value: formatClusterMetric(metrics.spikelet_density, '') },
-        { group: '穗级特征', label: '对称度', value: formatClusterMetric(metrics.mean_symmetry_index, '') },
-        { group: '穗级特征', label: '重心偏移度', value: formatClusterMetric(metrics.mean_centroid_offset, '') },
-        { group: '穗级特征', label: '平均色相', value: formatClusterMetric(metrics.mean_hue_deg, '°') },
-        { group: '穗级特征', label: '平均饱和度', value: formatClusterMetric(metrics.mean_saturation, '') },
-        { group: '穗级特征', label: '色相标准差', value: formatClusterMetric(metrics.std_hue, '°') },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricSpikeletLength'), value: formatClusterMetric(metrics.mean_spikelet_length_mm, 'mm') },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricSpikeletWidth'), value: formatClusterMetric(metrics.mean_spikelet_width_mm, 'mm') },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricSpikeletAspectRatio'), value: formatClusterMetric(metrics.mean_aspect_ratio, '') },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricAttachmentAngle'), value: formatClusterMetric(metrics.mean_attachment_angle, '°') },
+        { group: I18N.t('groupEar'), label: I18N.t('metricSpikeLength'), value: formatClusterMetric(metrics.mean_spike_length_cm, 'cm') },
+        { group: I18N.t('groupEar'), label: I18N.t('metricSpikeletCount'), value: formatClusterMetric(metrics.spikelet_count, '') },
+        { group: I18N.t('groupEar'), label: I18N.t('metricSpikeletDensity'), value: formatClusterMetric(metrics.spikelet_density, '') },
+        { group: I18N.t('groupEar'), label: I18N.t('metricSymmetry'), value: formatClusterMetric(metrics.mean_symmetry_index, '') },
+        { group: I18N.t('groupEar'), label: I18N.t('metricCentroidOffset'), value: formatClusterMetric(metrics.mean_centroid_offset, '') },
+        { group: I18N.t('groupEar'), label: I18N.t('metricMeanHue'), value: formatClusterMetric(metrics.mean_hue_deg, '°') },
+        { group: I18N.t('groupEar'), label: I18N.t('metricMeanSaturation'), value: formatClusterMetric(metrics.mean_saturation, '') },
+        { group: I18N.t('groupEar'), label: I18N.t('metricStdHue'), value: formatClusterMetric(metrics.std_hue, '°') },
     ];
 }
 
 function renderGroupedMetricCards(rows) {
-    const spikeletRows = rows.filter(item => item.group === '小穗级特征');
-    const earRows = rows.filter(item => item.group === '穗级特征');
+    const spikeletRows = rows.filter(item => item.group === I18N.t('groupSpikelet'));
+    const earRows = rows.filter(item => item.group === I18N.t('groupEar'));
     const renderSection = (title, groupClass, items) => `
         <section class="cluster-modal__section cluster-modal__section--${groupClass}">
             <h4>${title}</h4>
@@ -2241,7 +2646,7 @@ function renderGroupedMetricCards(rows) {
         </section>
     `;
 
-    return `${renderSection('小穗级特征', 'spikelet', spikeletRows)}${renderSection('穗级特征', 'ear', earRows)}`;
+    return `${renderSection(I18N.t('groupSpikelet'), 'spikelet', spikeletRows)}${renderSection(I18N.t('groupEar'), 'ear', earRows)}`;
 }
 
 function renderHoverMetricRows(rows) {
@@ -2259,8 +2664,8 @@ function showClusterHoverCardForSample(event, result, clusterLabel, options = {}
         return;
     }
     const rows = buildNineSampleMetricRows(result.ear_pheno || {});
-    const spikeletRows = rows.filter(item => item.group === '小穗级特征');
-    const earRows = rows.filter(item => item.group === '穗级特征');
+    const spikeletRows = rows.filter(item => item.group === I18N.t('groupSpikelet'));
+    const earRows = rows.filter(item => item.group === I18N.t('groupEar'));
     const showImage = options.showImage !== false;
     const imageUrl = result.images?.original || result.images?.analysis || '';
 
@@ -2270,10 +2675,10 @@ function showClusterHoverCardForSample(event, result, clusterLabel, options = {}
             <div class="cluster-hover-card__layout">
                 <div class="cluster-hover-card__body cluster-hover-card__body--metrics-only">
                     <h4>${result.image_name || result.filename}</h4>
-                    <p>Cluster ${displayClusterLabel}</p>
-                    <div class="cluster-hover-card__group">小穗级特征</div>
+                    <p>${I18N.t('clusterLabel', { n: displayClusterLabel })}</p>
+                    <div class="cluster-hover-card__group">${I18N.t('groupSpikelet')}</div>
                     ${renderHoverMetricRows(spikeletRows)}
-                    <div class="cluster-hover-card__group">穗级特征</div>
+                    <div class="cluster-hover-card__group">${I18N.t('groupEar')}</div>
                     ${renderHoverMetricRows(earRows)}
                 </div>
                 <div class="cluster-hover-card__image-wrap"><img class="cluster-hover-card__image" src="${imageUrl}" alt="${result.image_name || result.filename}"></div>
@@ -2284,10 +2689,10 @@ function showClusterHoverCardForSample(event, result, clusterLabel, options = {}
         refs.clusterHoverCard.innerHTML = `
             <div class="cluster-hover-card__body cluster-hover-card__body--metrics-only">
                 <h4>${result.image_name || result.filename}</h4>
-                <p>Cluster ${displayClusterLabel}</p>
-                <div class="cluster-hover-card__group">小穗级特征</div>
+                <p>${I18N.t('clusterLabel', { n: displayClusterLabel })}</p>
+                <div class="cluster-hover-card__group">${I18N.t('groupSpikelet')}</div>
                 ${renderHoverMetricRows(spikeletRows)}
-                <div class="cluster-hover-card__group">穗级特征</div>
+                <div class="cluster-hover-card__group">${I18N.t('groupEar')}</div>
                 ${renderHoverMetricRows(earRows)}
             </div>
         `;
@@ -2304,16 +2709,16 @@ function showClusterHoverCardForCluster(event, clusterItem) {
     }
 
     const rows = buildNineClusterMetricRows(clusterItem);
-    const spikeletRows = rows.filter(item => item.group === '小穗级特征');
-    const earRows = rows.filter(item => item.group === '穗级特征');
+    const spikeletRows = rows.filter(item => item.group === I18N.t('groupSpikelet'));
+    const earRows = rows.filter(item => item.group === I18N.t('groupEar'));
 
     refs.clusterHoverCard.innerHTML = `
         <div class="cluster-hover-card__body cluster-hover-card__body--metrics-only">
-            <h4>第 ${clusterItem.cluster_id + 1} 类</h4>
-            <p>样本数：${clusterItem.sample_count}</p>
-            <div class="cluster-hover-card__group">小穗级特征</div>
+            <h4>${I18N.t('clusterLabel', { n: clusterItem.cluster_id + 1 })}</h4>
+            <p>${I18N.t('clusterSamplesCount', { count: clusterItem.sample_count })}</p>
+            <div class="cluster-hover-card__group">${I18N.t('groupSpikelet')}</div>
             ${renderHoverMetricRows(spikeletRows)}
-            <div class="cluster-hover-card__group">穗级特征</div>
+            <div class="cluster-hover-card__group">${I18N.t('groupEar')}</div>
             ${renderHoverMetricRows(earRows)}
         </div>
     `;
@@ -2334,19 +2739,19 @@ function showClusterHoverCardForDendrogramNode(event, cluster, nodeId) {
         hideClusterHoverCard();
         return;
     }
-    const extra = node.sample_names.length > 1 ? ` +${node.sample_names.length - 1} 个样本` : '';
+    const extra = node.sample_names.length > 1 ? I18N.t('extraSamples', { count: node.sample_names.length - 1 }) : '';
     const rows = buildNineSampleMetricRows(sample.ear_pheno || {});
-    const spikeletRows = rows.filter(item => item.group === '小穗级特征');
-    const earRows = rows.filter(item => item.group === '穗级特征');
+    const spikeletRows = rows.filter(item => item.group === I18N.t('groupSpikelet'));
+    const earRows = rows.filter(item => item.group === I18N.t('groupEar'));
     const imageUrl = sample.images?.original || sample.images?.analysis || '';
     refs.clusterHoverCard.innerHTML = `
         <div class="cluster-hover-card__layout">
             <div class="cluster-hover-card__body cluster-hover-card__body--metrics-only">
                 <h4>${sample.image_name || sample.filename}${extra}</h4>
-                <p>树节点覆盖 ${node.sample_names.length} 个样本</p>
-                <div class="cluster-hover-card__group">小穗级特征</div>
+                <p>${I18N.t('treeNodeCoverSamples', { count: node.sample_names.length })}</p>
+                <div class="cluster-hover-card__group">${I18N.t('groupSpikelet')}</div>
                 ${renderHoverMetricRows(spikeletRows)}
-                <div class="cluster-hover-card__group">穗级特征</div>
+                <div class="cluster-hover-card__group">${I18N.t('groupEar')}</div>
                 ${renderHoverMetricRows(earRows)}
             </div>
             ${imageUrl ? `<div class="cluster-hover-card__image-wrap"><img class="cluster-hover-card__image" src="${imageUrl}" alt="${sample.image_name || sample.filename}"></div>` : ''}
@@ -2468,7 +2873,7 @@ function openClusterModal(clusterId) {
         return;
     }
     state.selectedClusterId = clusterId;
-    refs.clusterModalTitle.textContent = `第 ${clusterId + 1} 类详情`;
+    refs.clusterModalTitle.textContent = I18N.t('clusterDetailTitleWithId', { n: clusterId + 1 });
     refs.clusterModalSummary.innerHTML = renderGroupedMetricCards(buildNineClusterMetricRows(cluster));
     refs.clusterModalGrid.innerHTML = cluster.samples.map(sample => `
         <button class="cluster-thumb" data-sample-name="${sample.image_name || sample.filename}" data-image-url="${sample.images?.original || sample.images?.analysis || ''}">

@@ -139,6 +139,7 @@ display/
 *.pdf
 *.png
 *.jpg
-
+*.jpeg
+*.synctex.gz
 
 .workbuddy/
