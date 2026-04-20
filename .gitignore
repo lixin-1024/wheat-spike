@@ -142,4 +142,6 @@ display/
 *.jpeg
 *.synctex.gz
 
+*.docx
+
 .workbuddy/

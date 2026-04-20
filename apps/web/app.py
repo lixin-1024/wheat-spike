@@ -358,15 +358,15 @@ def build_cluster_export_csv(payload: dict, cluster_id: int) -> str | None:
     writer.writerow([])
 
     feature_keys = [
-        "spike_length_cm",
         "mean_spikelet_length_mm",
         "mean_spikelet_width_mm",
         "mean_attachment_angle",
-        "symmetry_index",
-        "centroid_offset",
         "mean_hue_deg",
         "mean_saturation",
         "std_hue",
+        "spike_length_cm",
+        "symmetry_index",
+        "centroid_offset",
     ]
     writer.writerow(["image", *feature_keys])
     for sample in target.get("samples", []):

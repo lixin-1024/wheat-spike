@@ -161,8 +161,8 @@ const I18N = {
         en: {
             // 页面标题
             pageTitle: 'Wheat Phenolab',
-            heroTitle: 'Wheat Ear Phenotype Analysis Platform',
-            heroSubtitle: '—— Every wheat ear deserves a computable answer',
+            heroTitle: 'Wheat Spike Phenotype Analysis Platform',
+            heroSubtitle: '—— Every wheat spike deserves a computable answer',
             // 模式切换
             modeSingle: 'Single Analysis',
             modeSingleSub: 'Fine Canvas · Skeleton Extraction',
@@ -259,11 +259,11 @@ const I18N = {
             clusterCompare: 'Cluster Comparison',
             clearCompare: 'Clear All',
             spikeletFeatures: 'Spikelet Features',
-            earFeatures: 'Ear Features',
+            earFeatures: 'Spike Features',
             selectedClusters: '{count} clusters selected',
             compareNeedTwo: 'Select at least 2 clusters to show comparison charts.',
             radarChartSpikelet: 'Radar Chart · Spikelet Features',
-            radarChartEar: 'Radar Chart · Ear Features',
+            radarChartEar: 'Radar Chart · Spike Features',
             barChart: 'Bar Chart',
             clusterLabel: 'Cluster {n}',
             sampleCountText: '{count} samples',
@@ -273,7 +273,7 @@ const I18N = {
             extraSamples: ' +{count} samples',
             // 指标分组
             groupSpikelet: 'Spikelet Features',
-            groupEar: 'Ear Features',
+            groupEar: 'Spike Features',
             // 模态框
             previewTitle: 'Image Preview',
             clusterDetailTitle: 'Cluster Details',
@@ -1555,27 +1555,51 @@ function showSkeletonPathTooltip(event, pathId) {
 
 function renderSingleMetrics(result) {
     const ear = result.ear_pheno;
-    const metrics = [
+    const spikeletMetrics = [
         [I18N.t('metricSpikeletLength'), formatMetric(ear.mean_spikelet_length_mm, 'mm', ear.mean_spikelet_length, 'px')],
         [I18N.t('metricSpikeletWidth'), formatMetric(ear.mean_spikelet_width_mm, 'mm', ear.mean_spikelet_width, 'px')],
         [I18N.t('metricSpikeletAspectRatio'), ear.mean_aspect_ratio.toFixed(3)],
         [I18N.t('metricAttachmentAngle'), `${ear.mean_attachment_angle.toFixed(2)}°`],
+        [I18N.t('metricMeanHue'), `${Number(ear.mean_hue_deg ?? 0).toFixed(2)}°`],
+        [I18N.t('metricMeanSaturation'), Number(ear.mean_saturation ?? 0).toFixed(2)],
+        [I18N.t('metricStdHue'), Number(ear.std_hue ?? 0).toFixed(2)],
+    ];
+    const earMetrics = [
         [I18N.t('metricSpikeLength'), formatMetric(ear.spike_length_cm, 'cm', ear.spike_length_px, 'px')],
         [I18N.t('metricSpikeletCount'), `${ear.spikelet_count}`],
         [I18N.t('metricSpikeletDensity'), formatMetric(ear.spikelet_density_per_cm, '/cm', ear.spikelet_density_px, '/px')],
         [I18N.t('metricSymmetry'), ear.symmetry_index.toFixed(4)],
         [I18N.t('metricCentroidOffset'), ear.centroid_offset.toFixed(4)],
-        [I18N.t('metricMeanHue'), `${Number(ear.mean_hue_deg ?? 0).toFixed(2)}°`],
-        [I18N.t('metricMeanSaturation'), Number(ear.mean_saturation ?? 0).toFixed(2)],
-        [I18N.t('metricStdHue'), Number(ear.std_hue ?? 0).toFixed(2)],
     ];
 
-    refs.singleMetrics.innerHTML = metrics.map(([label, value]) => `
-        <div class="metric-card">
-            <div class="metric-card__label">${label}</div>
-            <div class="metric-card__value">${value}</div>
+    refs.singleMetrics.innerHTML = `
+        <div class="single-metrics-layout">
+            ${renderSingleMetricGroup('spikelet', I18N.t('groupSpikelet'), 'SPIKELET', spikeletMetrics)}
+            ${renderSingleMetricGroup('ear', I18N.t('groupEar'), 'SPIKE', earMetrics)}
         </div>
-    `).join('');
+    `;
+}
+
+function renderSingleMetricGroup(groupClass, title, eyebrow, metrics) {
+    return `
+        <section class="single-metrics-group single-metrics-group--${groupClass}">
+            <header class="single-metrics-group__header">
+                <div>
+                    <p class="single-metrics-group__eyebrow">${eyebrow}</p>
+                    <h4 class="single-metrics-group__title">${title}</h4>
+                </div>
+                <span class="single-metrics-group__count">${metrics.length}</span>
+            </header>
+            <div class="single-metrics-group__grid">
+                ${metrics.map(([label, value]) => `
+                    <article class="single-metric-card">
+                        <div class="single-metric-card__label">${label}</div>
+                        <div class="single-metric-card__value">${value}</div>
+                    </article>
+                `).join('')}
+            </div>
+        </section>
+    `;
 }
 
 function formatMetric(preferredValue, preferredUnit, fallbackValue, fallbackUnit) {
@@ -2027,6 +2051,9 @@ function renderClusterCompare(cluster) {
         { key: 'mean_spikelet_width_mm', label: I18N.t('metricSpikeletWidth'), unit: 'mm', group: I18N.t('groupSpikelet'), groupClass: 'spikelet' },
         { key: 'mean_aspect_ratio', label: I18N.t('metricSpikeletAspectRatio'), unit: '', group: I18N.t('groupSpikelet'), groupClass: 'spikelet' },
         { key: 'mean_attachment_angle', label: I18N.t('metricAttachmentAngle'), unit: '°', group: I18N.t('groupSpikelet'), groupClass: 'spikelet' },
+        { key: 'mean_hue_deg', label: I18N.t('metricMeanHue'), unit: '°', group: I18N.t('groupSpikelet'), groupClass: 'spikelet' },
+        { key: 'mean_saturation', label: I18N.t('metricMeanSaturation'), unit: '', group: I18N.t('groupSpikelet'), groupClass: 'spikelet' },
+        { key: 'std_hue', label: I18N.t('metricStdHue'), unit: '°', group: I18N.t('groupSpikelet'), groupClass: 'spikelet' },
     ];
     const earMetrics = [
         { key: 'mean_spike_length_cm', label: I18N.t('metricSpikeLength'), unit: 'cm', group: I18N.t('groupEar'), groupClass: 'ear' },
@@ -2034,9 +2061,6 @@ function renderClusterCompare(cluster) {
         { key: 'spikelet_density', label: I18N.t('metricSpikeletDensity'), unit: '', group: I18N.t('groupEar'), groupClass: 'ear' },
         { key: 'mean_symmetry_index', label: I18N.t('metricSymmetry'), unit: '', group: I18N.t('groupEar'), groupClass: 'ear' },
         { key: 'mean_centroid_offset', label: I18N.t('metricCentroidOffset'), unit: '', group: I18N.t('groupEar'), groupClass: 'ear' },
-        { key: 'mean_hue_deg', label: I18N.t('metricMeanHue'), unit: '°', group: I18N.t('groupEar'), groupClass: 'ear' },
-        { key: 'mean_saturation', label: I18N.t('metricMeanSaturation'), unit: '', group: I18N.t('groupEar'), groupClass: 'ear' },
-        { key: 'std_hue', label: I18N.t('metricStdHue'), unit: '°', group: I18N.t('groupEar'), groupClass: 'ear' },
     ];
     const metrics = [...spikeletMetrics, ...earMetrics];
 
@@ -2440,14 +2464,14 @@ function getClusterMetricOptions(cluster) {
         { key: 'mean_spikelet_width_mm', labelKey: 'metricSpikeletWidth', group: 'spikelet', groupLabelKey: 'groupSpikelet' },
         { key: 'mean_aspect_ratio', labelKey: 'metricSpikeletAspectRatio', group: 'spikelet', groupLabelKey: 'groupSpikelet' },
         { key: 'mean_attachment_angle', labelKey: 'metricAttachmentAngle', group: 'spikelet', groupLabelKey: 'groupSpikelet' },
+        { key: 'mean_hue_deg', labelKey: 'metricMeanHue', group: 'spikelet', groupLabelKey: 'groupSpikelet' },
+        { key: 'mean_saturation', labelKey: 'metricMeanSaturation', group: 'spikelet', groupLabelKey: 'groupSpikelet' },
+        { key: 'std_hue', labelKey: 'metricStdHue', group: 'spikelet', groupLabelKey: 'groupSpikelet' },
         { key: 'mean_spike_length_cm', labelKey: 'metricSpikeLength', group: 'ear', groupLabelKey: 'groupEar' },
         { key: 'spikelet_count', labelKey: 'metricSpikeletCount', group: 'ear', groupLabelKey: 'groupEar' },
         { key: 'spikelet_density', labelKey: 'metricSpikeletDensity', group: 'ear', groupLabelKey: 'groupEar' },
         { key: 'mean_symmetry_index', labelKey: 'metricSymmetry', group: 'ear', groupLabelKey: 'groupEar' },
         { key: 'mean_centroid_offset', labelKey: 'metricCentroidOffset', group: 'ear', groupLabelKey: 'groupEar' },
-        { key: 'mean_hue_deg', labelKey: 'metricMeanHue', group: 'ear', groupLabelKey: 'groupEar' },
-        { key: 'mean_saturation', labelKey: 'metricMeanSaturation', group: 'ear', groupLabelKey: 'groupEar' },
-        { key: 'std_hue', labelKey: 'metricStdHue', group: 'ear', groupLabelKey: 'groupEar' },
     ].map(m => ({
         ...m,
         label: I18N.t(m.labelKey),
@@ -2600,14 +2624,14 @@ function buildNineSampleMetricRows(ear) {
         { group: I18N.t('groupSpikelet'), label: I18N.t('metricSpikeletWidth'), value: formatMetric(safeEar.mean_spikelet_width_mm, 'mm', safeEar.mean_spikelet_width ?? 0, 'px') },
         { group: I18N.t('groupSpikelet'), label: I18N.t('metricSpikeletAspectRatio'), value: Number(safeEar.mean_aspect_ratio ?? 0).toFixed(3) },
         { group: I18N.t('groupSpikelet'), label: I18N.t('metricAttachmentAngle'), value: `${Number(safeEar.mean_attachment_angle ?? 0).toFixed(2)} °` },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricMeanHue'), value: `${Number(safeEar.mean_hue_deg ?? 0).toFixed(2)} °` },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricMeanSaturation'), value: Number(safeEar.mean_saturation ?? 0).toFixed(2) },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricStdHue'), value: Number(safeEar.std_hue ?? 0).toFixed(2) },
         { group: I18N.t('groupEar'), label: I18N.t('metricSpikeLength'), value: formatMetric(safeEar.spike_length_cm, 'cm', safeEar.spike_length_px ?? 0, 'px') },
         { group: I18N.t('groupEar'), label: I18N.t('metricSpikeletCount'), value: String(Math.round(Number(safeEar.spikelet_count ?? 0))) },
         { group: I18N.t('groupEar'), label: I18N.t('metricSpikeletDensity'), value: formatMetric(safeEar.spikelet_density_per_cm, '/cm', safeEar.spikelet_density_px ?? 0, '/px') },
         { group: I18N.t('groupEar'), label: I18N.t('metricSymmetry'), value: Number(safeEar.symmetry_index ?? 0).toFixed(4) },
         { group: I18N.t('groupEar'), label: I18N.t('metricCentroidOffset'), value: Number(safeEar.centroid_offset ?? 0).toFixed(4) },
-        { group: I18N.t('groupEar'), label: I18N.t('metricMeanHue'), value: `${Number(safeEar.mean_hue_deg ?? 0).toFixed(2)} °` },
-        { group: I18N.t('groupEar'), label: I18N.t('metricMeanSaturation'), value: Number(safeEar.mean_saturation ?? 0).toFixed(2) },
-        { group: I18N.t('groupEar'), label: I18N.t('metricStdHue'), value: Number(safeEar.std_hue ?? 0).toFixed(2) },
     ];
 }
 
@@ -2618,14 +2642,14 @@ function buildNineClusterMetricRows(clusterItem) {
         { group: I18N.t('groupSpikelet'), label: I18N.t('metricSpikeletWidth'), value: formatClusterMetric(metrics.mean_spikelet_width_mm, 'mm') },
         { group: I18N.t('groupSpikelet'), label: I18N.t('metricSpikeletAspectRatio'), value: formatClusterMetric(metrics.mean_aspect_ratio, '') },
         { group: I18N.t('groupSpikelet'), label: I18N.t('metricAttachmentAngle'), value: formatClusterMetric(metrics.mean_attachment_angle, '°') },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricMeanHue'), value: formatClusterMetric(metrics.mean_hue_deg, '°') },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricMeanSaturation'), value: formatClusterMetric(metrics.mean_saturation, '') },
+        { group: I18N.t('groupSpikelet'), label: I18N.t('metricStdHue'), value: formatClusterMetric(metrics.std_hue, '°') },
         { group: I18N.t('groupEar'), label: I18N.t('metricSpikeLength'), value: formatClusterMetric(metrics.mean_spike_length_cm, 'cm') },
         { group: I18N.t('groupEar'), label: I18N.t('metricSpikeletCount'), value: formatClusterMetric(metrics.spikelet_count, '') },
         { group: I18N.t('groupEar'), label: I18N.t('metricSpikeletDensity'), value: formatClusterMetric(metrics.spikelet_density, '') },
         { group: I18N.t('groupEar'), label: I18N.t('metricSymmetry'), value: formatClusterMetric(metrics.mean_symmetry_index, '') },
         { group: I18N.t('groupEar'), label: I18N.t('metricCentroidOffset'), value: formatClusterMetric(metrics.mean_centroid_offset, '') },
-        { group: I18N.t('groupEar'), label: I18N.t('metricMeanHue'), value: formatClusterMetric(metrics.mean_hue_deg, '°') },
-        { group: I18N.t('groupEar'), label: I18N.t('metricMeanSaturation'), value: formatClusterMetric(metrics.mean_saturation, '') },
-        { group: I18N.t('groupEar'), label: I18N.t('metricStdHue'), value: formatClusterMetric(metrics.std_hue, '°') },
     ];
 }
 

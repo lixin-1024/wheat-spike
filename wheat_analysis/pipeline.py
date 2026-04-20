@@ -380,6 +380,9 @@ class BatchImagePipeline(_BasePipeline):
             'mean_spikelet_width_mm': self._safe_float(ear['mean_spikelet_width_mm']),
             'mean_aspect_ratio': self._safe_float(ear['mean_aspect_ratio']),
             'mean_attachment_angle': self._safe_float(ear['mean_attachment_angle']),
+            'mean_hue_deg': self._safe_float(ear.get('mean_hue_deg')),
+            'mean_saturation': self._safe_float(ear.get('mean_saturation')),
+            'std_hue': self._safe_float(ear.get('std_hue')),
             'spike_length_px': self._safe_float(ear['spike_length_px']),
             'spike_length_cm': self._safe_float(ear['spike_length_cm']),
             'spikelet_density_px': self._safe_float(ear['spikelet_density_px']),
@@ -387,9 +390,6 @@ class BatchImagePipeline(_BasePipeline):
             'symmetry_index': self._safe_float(ear['symmetry_index']),
             'centroid_offset': self._safe_float(ear['centroid_offset']),
             'color_calibration_ok': bool(ear.get('color_calibration_ok')),
-            'mean_hue_deg': self._safe_float(ear.get('mean_hue_deg')),
-            'mean_saturation': self._safe_float(ear.get('mean_saturation')),
-            'std_hue': self._safe_float(ear.get('std_hue')),
         }
 
     def _build_feature_row(self, image_name: str, feature_names: list[str], feature_vector: np.ndarray) -> dict:
